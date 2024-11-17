@@ -218,6 +218,48 @@ NOTICE:  SELECT USING on rls_test_tgt.(3,"tgt d","TGT D")
 (1 row)
 
 ROLLBACK;
+-- ON CONFLICT DO SELECT should be similar to DO UPDATE, except there 
+-- is not need to check the UPDATE policy in that case.
+BEGIN;
+INSERT INTO rls_test_tgt VALUES (4, 'tgt a') ON CONFLICT (a) DO SELECT RETURNING *;
+NOTICE:  INSERT CHECK on rls_test_tgt.(4,"tgt a","TGT A")
+NOTICE:  SELECT USING on rls_test_tgt.(4,"tgt a","TGT A")
+ a |   b   |   c   
+---+-------+-------
+ 4 | tgt a | TGT A
+(1 row)
+
+INSERT INTO rls_test_tgt VALUES (4, 'tgt a') ON CONFLICT (a) DO SELECT RETURNING *;
+NOTICE:  INSERT CHECK on rls_test_tgt.(4,"tgt a","TGT A")
+NOTICE:  SELECT USING on rls_test_tgt.(4,"tgt a","TGT A")
+NOTICE:  SELECT USING on rls_test_tgt.(4,"tgt a","TGT A")
+ a |   b   |   c   
+---+-------+-------
+ 4 | tgt a | TGT A
+(1 row)
+
+ROLLBACK;
+-- ON CONFLICT DO SELECT FOR UPDATE should have the exact same RLS behaviour as DO UPDATE
+BEGIN;
+INSERT INTO rls_test_tgt VALUES (5, 'tgt a') ON CONFLICT (a) DO SELECT FOR UPDATE RETURNING *;
+NOTICE:  INSERT CHECK on rls_test_tgt.(5,"tgt a","TGT A")
+NOTICE:  SELECT USING on rls_test_tgt.(5,"tgt a","TGT A")
+ a |   b   |   c   
+---+-------+-------
+ 5 | tgt a | TGT A
+(1 row)
+
+INSERT INTO rls_test_tgt VALUES (5, 'tgt c') ON CONFLICT (a) DO SELECT FOR UPDATE RETURNING *;
+NOTICE:  INSERT CHECK on rls_test_tgt.(5,"tgt c","TGT C")
+NOTICE:  SELECT USING on rls_test_tgt.(5,"tgt c","TGT C")
+NOTICE:  UPDATE USING on rls_test_tgt.(5,"tgt a","TGT A")
+NOTICE:  SELECT USING on rls_test_tgt.(5,"tgt a","TGT A")
+ a |   b   |   c   
+---+-------+-------
+ 5 | tgt a | TGT A
+(1 row)
+
+ROLLBACK;
 -- MERGE should always apply SELECT USING policy clauses to both source and
 -- target rows
 MERGE INTO rls_test_tgt t USING rls_test_src s ON t.a = s.a

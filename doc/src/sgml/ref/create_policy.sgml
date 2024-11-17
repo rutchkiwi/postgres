@@ -572,6 +572,22 @@ CREATE POLICY <replaceable class="parameter">name</replaceable> ON <replaceable 
        </entry>
        <entry>&mdash;</entry>
       </row>
+       <row>
+       <entry><command>ON CONFLICT DO SELECT</command></entry>
+       <entry>Check existing rows</entry>
+       <entry>&mdash;</entry>
+       <entry>&mdash;</entry>
+       <entry>&mdash;</entry>
+       <entry>&mdash;</entry>
+      </row>
+      <row>
+       <entry><command>ON CONFLICT DO SELECT FOR UPDATE/SHARE</command></entry>
+       <entry>Check existing rows</entry>
+       <entry>&mdash;</entry>
+       <entry>Existing row</entry>
+       <entry>&mdash;</entry>
+       <entry>&mdash;</entry>
+      </row>
       <row>
        <entry><command>MERGE</command></entry>
        <entry>Filter source &amp; target rows</entry>
