@@ -101,6 +101,27 @@ insert into insertconflicttest
 values (1, 'Apple'), (2, 'Orange')
 on conflict (key) do update set (fruit, key) = (excluded.fruit, excluded.key);
 
+-- DO SELECT
+delete from insertconflicttest where fruit = 'Apple';
+insert into insertconflicttest values (1, 'Apple') on conflict (key) do select; -- fails
+insert into insertconflicttest values (1, 'Apple') on conflict (key) do select returning *;
+insert into insertconflicttest values (1, 'Apple') on conflict (key) do select returning *;
+insert into insertconflicttest as i values (1, 'Apple') on conflict (key) do select where i.fruit = 'Apple' returning *;
+insert into insertconflicttest as i values (1, 'Apple') on conflict (key) do select where i.fruit = 'Orange' returning *;
+insert into insertconflicttest as i values (1, 'Orange') on conflict (key) do select where excluded.fruit = 'Apple' returning *;
+insert into insertconflicttest as i values (1, 'Orange') on conflict (key) do select where excluded.fruit = 'Orange' returning *;
+delete from insertconflicttest where fruit = 'Apple';
+insert into insertconflicttest values (1, 'Apple') on conflict (key) do select for update returning *;
+insert into insertconflicttest values (1, 'Apple') on conflict (key) do select for update returning *;
+insert into insertconflicttest as i values (1, 'Apple') on conflict (key) do select for update where i.fruit = 'Apple' returning *;
+insert into insertconflicttest as i values (1, 'Apple') on conflict (key) do select for update where i.fruit = 'Orange' returning *;
+insert into insertconflicttest as i values (1, 'Orange') on conflict (key) do select for update where excluded.fruit = 'Apple' returning *;
+insert into insertconflicttest as i values (1, 'Orange') on conflict (key) do select for update where excluded.fruit = 'Orange' returning *;
+insert into insertconflicttest as ict values (3, 'Pear') on conflict (key) do select for update returning old.*, new.*, ict.*;
+insert into insertconflicttest as ict values (3, 'Banana') on conflict (key) do select for update returning old.*, new.*, ict.*;
+
+explain (costs off) insert into insertconflicttest values (1, 'Apple') on conflict (key) do select for key share returning *;
+
 -- Give good diagnostic message when EXCLUDED.* spuriously referenced from
 -- RETURNING:
 insert into insertconflicttest values (1, 'Apple') on conflict (key) do update set fruit = excluded.fruit RETURNING excluded.fruit;
@@ -112,18 +133,18 @@ insert into insertconflicttest values (1, 'Apple') on conflict (keyy) do update 
 insert into insertconflicttest values (1, 'Apple') on conflict (key) do update set fruit = excluded.fruitt;
 
 -- inference fails:
-insert into insertconflicttest values (3, 'Kiwi') on conflict (key, fruit) do update set fruit = excluded.fruit;
-insert into insertconflicttest values (4, 'Mango') on conflict (fruit, key) do update set fruit = excluded.fruit;
-insert into insertconflicttest values (5, 'Lemon') on conflict (fruit) do update set fruit = excluded.fruit;
-insert into insertconflicttest values (6, 'Passionfruit') on conflict (lower(fruit)) do update set fruit = excluded.fruit;
+insert into insertconflicttest values (4, 'Kiwi') on conflict (key, fruit) do update set fruit = excluded.fruit;
+insert into insertconflicttest values (5, 'Mango') on conflict (fruit, key) do update set fruit = excluded.fruit;
+insert into insertconflicttest values (6, 'Lemon') on conflict (fruit) do update set fruit = excluded.fruit;
+insert into insertconflicttest values (7, 'Passionfruit') on conflict (lower(fruit)) do update set fruit = excluded.fruit;
 
 -- Check the target relation can be aliased
-insert into insertconflicttest AS ict values (6, 'Passionfruit') on conflict (key) do update set fruit = excluded.fruit; -- ok, no reference to target table
-insert into insertconflicttest AS ict values (6, 'Passionfruit') on conflict (key) do update set fruit = ict.fruit; -- ok, alias
-insert into insertconflicttest AS ict values (6, 'Passionfruit') on conflict (key) do update set fruit = insertconflicttest.fruit; -- error, references aliased away name
+insert into insertconflicttest AS ict values (7, 'Passionfruit') on conflict (key) do update set fruit = excluded.fruit; -- ok, no reference to target table
+insert into insertconflicttest AS ict values (7, 'Passionfruit') on conflict (key) do update set fruit = ict.fruit; -- ok, alias
+insert into insertconflicttest AS ict values (7, 'Passionfruit') on conflict (key) do update set fruit = insertconflicttest.fruit; -- error, references aliased away name
 
 -- Check helpful hint when qualifying set column with target table
-insert into insertconflicttest values (3, 'Kiwi') on conflict (key, fruit) do update set insertconflicttest.fruit = 'Mango';
+insert into insertconflicttest values (4, 'Kiwi') on conflict (key, fruit) do update set insertconflicttest.fruit = 'Mango';
 
 drop index key_index;
 
@@ -133,14 +154,14 @@ drop index key_index;
 create unique index comp_key_index on insertconflicttest(key, fruit);
 
 -- inference succeeds:
-insert into insertconflicttest values (7, 'Raspberry') on conflict (key, fruit) do update set fruit = excluded.fruit;
-insert into insertconflicttest values (8, 'Lime') on conflict (fruit, key) do update set fruit = excluded.fruit;
+insert into insertconflicttest values (8, 'Raspberry') on conflict (key, fruit) do update set fruit = excluded.fruit;
+insert into insertconflicttest values (9, 'Lime') on conflict (fruit, key) do update set fruit = excluded.fruit;
 
 -- inference fails:
-insert into insertconflicttest values (9, 'Banana') on conflict (key) do update set fruit = excluded.fruit;
-insert into insertconflicttest values (10, 'Blueberry') on conflict (key, key, key) do update set fruit = excluded.fruit;
-insert into insertconflicttest values (11, 'Cherry') on conflict (key, lower(fruit)) do update set fruit = excluded.fruit;
-insert into insertconflicttest values (12, 'Date') on conflict (lower(fruit), key) do update set fruit = excluded.fruit;
+insert into insertconflicttest values (10, 'Banana') on conflict (key) do update set fruit = excluded.fruit;
+insert into insertconflicttest values (11, 'Blueberry') on conflict (key, key, key) do update set fruit = excluded.fruit;
+insert into insertconflicttest values (12, 'Cherry') on conflict (key, lower(fruit)) do update set fruit = excluded.fruit;
+insert into insertconflicttest values (13, 'Date') on conflict (lower(fruit), key) do update set fruit = excluded.fruit;
 
 drop index comp_key_index;
 
@@ -151,12 +172,12 @@ create unique index part_comp_key_index on insertconflicttest(key, fruit) where 
 create unique index expr_part_comp_key_index on insertconflicttest(key, lower(fruit)) where key < 5;
 
 -- inference fails:
-insert into insertconflicttest values (13, 'Grape') on conflict (key, fruit) do update set fruit = excluded.fruit;
-insert into insertconflicttest values (14, 'Raisin') on conflict (fruit, key) do update set fruit = excluded.fruit;
-insert into insertconflicttest values (15, 'Cranberry') on conflict (key) do update set fruit = excluded.fruit;
-insert into insertconflicttest values (16, 'Melon') on conflict (key, key, key) do update set fruit = excluded.fruit;
-insert into insertconflicttest values (17, 'Mulberry') on conflict (key, lower(fruit)) do update set fruit = excluded.fruit;
-insert into insertconflicttest values (18, 'Pineapple') on conflict (lower(fruit), key) do update set fruit = excluded.fruit;
+insert into insertconflicttest values (14, 'Grape') on conflict (key, fruit) do update set fruit = excluded.fruit;
+insert into insertconflicttest values (15, 'Raisin') on conflict (fruit, key) do update set fruit = excluded.fruit;
+insert into insertconflicttest values (16, 'Cranberry') on conflict (key) do update set fruit = excluded.fruit;
+insert into insertconflicttest values (17, 'Melon') on conflict (key, key, key) do update set fruit = excluded.fruit;
+insert into insertconflicttest values (18, 'Mulberry') on conflict (key, lower(fruit)) do update set fruit = excluded.fruit;
+insert into insertconflicttest values (19, 'Pineapple') on conflict (lower(fruit), key) do update set fruit = excluded.fruit;
 
 drop index part_comp_key_index;
 drop index expr_part_comp_key_index;
@@ -454,6 +475,30 @@ begin transaction isolation level serializable;
 insert into selfconflict values (6,1), (6,2) on conflict(f1) do update set f2 = 0;
 commit;
 
+begin transaction isolation level read committed;
+insert into selfconflict values (7,1), (7,2) on conflict(f1) do select returning *;
+commit;
+
+begin transaction isolation level repeatable read;
+insert into selfconflict values (8,1), (8,2) on conflict(f1) do select returning *;
+commit;
+
+begin transaction isolation level serializable;
+insert into selfconflict values (9,1), (9,2) on conflict(f1) do select returning *;
+commit;
+
+begin transaction isolation level read committed;
+insert into selfconflict values (10,1), (10,2) on conflict(f1) do select for update returning *;
+commit;
+
+begin transaction isolation level repeatable read;
+insert into selfconflict values (11,1), (11,2) on conflict(f1) do select for update returning *;
+commit;
+
+begin transaction isolation level serializable;
+insert into selfconflict values (12,1), (12,2) on conflict(f1) do select for update returning *;
+commit;
+
 select * from selfconflict;
 
 drop table selfconflict;
@@ -468,13 +513,17 @@ insert into parted_conflict_test values (1, 'a') on conflict do nothing;
 -- index on a required, which does exist in parent
 insert into parted_conflict_test values (1, 'a') on conflict (a) do nothing;
 insert into parted_conflict_test values (1, 'a') on conflict (a) do update set b = excluded.b;
+insert into parted_conflict_test values (1, 'a') on conflict (a) do select returning *;
+insert into parted_conflict_test values (1, 'a') on conflict (a) do select for update returning *;
 
 -- targeting partition directly will work
 insert into parted_conflict_test_1 values (1, 'a') on conflict (a) do nothing;
 insert into parted_conflict_test_1 values (1, 'b') on conflict (a) do update set b = excluded.b;
+insert into parted_conflict_test_1 values (1, 'b') on conflict (a) do select returning b;
 
 -- index on b required, which doesn't exist in parent
-insert into parted_conflict_test values (2, 'b') on conflict (b) do update set a = excluded.a;
+insert into parted_conflict_test values (2, 'b') on conflict (b) do update set a = excluded.a; -- fail
+insert into parted_conflict_test values (2, 'b') on conflict (b) do select returning b; -- fail
 
 -- targeting partition directly will work
 insert into parted_conflict_test_1 values (2, 'b') on conflict (b) do update set a = excluded.a;
@@ -489,6 +538,7 @@ alter table parted_conflict_test attach partition parted_conflict_test_2 for val
 truncate parted_conflict_test;
 insert into parted_conflict_test values (3, 'a') on conflict (a) do update set b = excluded.b;
 insert into parted_conflict_test values (3, 'b') on conflict (a) do update set b = excluded.b;
+insert into parted_conflict_test values (3, 'a') on conflict (a) do select returning b;
 
 -- should see (3, 'b')
 select * from parted_conflict_test order by a;
@@ -499,6 +549,7 @@ create table parted_conflict_test_3 partition of parted_conflict_test for values
 truncate parted_conflict_test;
 insert into parted_conflict_test (a, b) values (4, 'a') on conflict (a) do update set b = excluded.b;
 insert into parted_conflict_test (a, b) values (4, 'b') on conflict (a) do update set b = excluded.b where parted_conflict_test.b = 'a';
+insert into parted_conflict_test (a, b) values (4, 'b') on conflict (a) do select returning b;
 
 -- should see (4, 'b')
 select * from parted_conflict_test order by a;
@@ -509,6 +560,7 @@ create table parted_conflict_test_4_1 partition of parted_conflict_test_4 for va
 truncate parted_conflict_test;
 insert into parted_conflict_test (a, b) values (5, 'a') on conflict (a) do update set b = excluded.b;
 insert into parted_conflict_test (a, b) values (5, 'b') on conflict (a) do update set b = excluded.b where parted_conflict_test.b = 'a';
+insert into parted_conflict_test (a, b) values (5, 'b') on conflict (a) do select where parted_conflict_test.b = 'a' returning b;
 
 -- should see (5, 'b')
 select * from parted_conflict_test order by a;
@@ -520,6 +572,25 @@ insert into parted_conflict_test (a, b) values (1, 'b'), (2, 'c'), (4, 'b') on c
 
 -- should see (1, 'b'), (2, 'a'), (4, 'b')
 select * from parted_conflict_test order by a;
+
+-- test DO SELECT with multiple rows hitting different partitions
+truncate parted_conflict_test;
+insert into parted_conflict_test (a, b) values (1, 'a'), (2, 'b'), (4, 'c');
+insert into parted_conflict_test (a, b) values (1, 'x'), (2, 'y'), (4, 'z') on conflict (a) do select returning *;
+
+-- should see original values (1, 'a'), (2, 'b'), (4, 'c')
+select * from parted_conflict_test order by a;
+
+-- test DO SELECT with WHERE filtering across partitions
+insert into parted_conflict_test (a, b) values (1, 'n') on conflict (a) do select where parted_conflict_test.b = 'a' returning *;
+insert into parted_conflict_test (a, b) values (2, 'n') on conflict (a) do select where parted_conflict_test.b = 'x' returning *;
+
+-- test DO SELECT with EXCLUDED in WHERE across partitions with different layouts
+insert into parted_conflict_test (a, b) values (3, 't') on conflict (a) do select where excluded.b = 't' returning *;
+
+-- test DO SELECT FOR UPDATE across different partition layouts
+insert into parted_conflict_test (a, b) values (1, 'l') on conflict (a) do select for update returning *;
+insert into parted_conflict_test (a, b) values (3, 'l') on conflict (a) do select for update returning *;
 
 drop table parted_conflict_test;
 

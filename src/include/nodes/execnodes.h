@@ -422,19 +422,21 @@ typedef struct JunkFilter
 } JunkFilter;
 
 /*
- * OnConflictSetState
+ * OnConflictActionState
  *
- * Executor state of an ON CONFLICT DO UPDATE operation.
+ * Executor state of an ON CONFLICT DO UPDATE/SELECT operation.
  */
-typedef struct OnConflictSetState
+typedef struct OnConflictActionState
 {
 	NodeTag		type;
 
 	TupleTableSlot *oc_Existing;	/* slot to store existing target tuple in */
 	TupleTableSlot *oc_ProjSlot;	/* CONFLICT ... SET ... projection target */
 	ProjectionInfo *oc_ProjInfo;	/* for ON CONFLICT DO UPDATE SET */
+	LockClauseStrength oc_LockingStrength;	/* strength of lock for ON
+											 * CONFLICT DO SELECT, or LCS_NONE */
 	ExprState  *oc_WhereClause; /* state for the WHERE clause */
-} OnConflictSetState;
+} OnConflictActionState;
 
 /* ----------------
  *	 MergeActionState information
@@ -580,7 +582,7 @@ typedef struct ResultRelInfo
 	List	   *ri_onConflictArbiterIndexes;
 
 	/* ON CONFLICT evaluation state */
-	OnConflictSetState *ri_onConflict;
+	OnConflictActionState *ri_onConflict;
 
 	/* for MERGE, lists of MergeActionState (one per MergeMatchKind) */
 	List	   *ri_MergeActions[NUM_MERGE_MATCH_KINDS];
