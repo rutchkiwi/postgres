@@ -301,11 +301,14 @@ get_row_security_policies(Query *root, RangeTblEntry *rte, int rt_index,
 		}
 
 		/*
-		 * For INSERT ... ON CONFLICT DO UPDATE we need additional policy
-		 * checks for the UPDATE which may be applied to the same RTE.
+		 * For INSERT ... ON CONFLICT DO UPDATE and DO SELECT FOR ... we need
+		 * additional policy checks for the UPDATE or locking which may be
+		 * applied to the same RTE.
 		 */
 		if (commandType == CMD_INSERT &&
-			root->onConflict && root->onConflict->action == ONCONFLICT_UPDATE)
+			root->onConflict && (root->onConflict->action == ONCONFLICT_UPDATE ||
+								 (root->onConflict->action == ONCONFLICT_SELECT &&
+								  root->onConflict->lockingStrength != LCS_NONE)))
 		{
 			List	   *conflict_permissive_policies;
 			List	   *conflict_restrictive_policies;
@@ -334,9 +337,9 @@ get_row_security_policies(Query *root, RangeTblEntry *rte, int rt_index,
 			/*
 			 * Get and add ALL/SELECT policies, as WCO_RLS_CONFLICT_CHECK WCOs
 			 * to ensure they are considered when taking the UPDATE path of an
-			 * INSERT .. ON CONFLICT DO UPDATE, if SELECT rights are required
-			 * for this relation, also as WCO policies, again, to avoid
-			 * silently dropping data.  See above.
+			 * INSERT .. ON CONFLICT, if SELECT rights are required for this
+			 * relation, also as WCO policies, again, to avoid silently
+			 * dropping data.  See above.
 			 */
 			if (perminfo->requiredPerms & ACL_SELECT)
 			{
@@ -364,8 +367,8 @@ get_row_security_policies(Query *root, RangeTblEntry *rte, int rt_index,
 			/*
 			 * Add ALL/SELECT policies as WCO_RLS_UPDATE_CHECK WCOs, to ensure
 			 * that the final updated row is visible when taking the UPDATE
-			 * path of an INSERT .. ON CONFLICT DO UPDATE, if SELECT rights
-			 * are required for this relation.
+			 * path of an INSERT .. ON CONFLICT, if SELECT rights are required
+			 * for this relation.
 			 */
 			if (perminfo->requiredPerms & ACL_SELECT)
 				add_with_check_options(rel, rt_index,
@@ -375,6 +378,29 @@ get_row_security_policies(Query *root, RangeTblEntry *rte, int rt_index,
 									   withCheckOptions,
 									   hasSubLinks,
 									   true);
+		}
+
+		/*
+		 * For INSERT ... ON CONFLICT DO SELELT we need additional policy
+		 * checks for the SELECT which may be applied to the same RTE.
+		 */
+		if (commandType == CMD_INSERT &&
+			root->onConflict && root->onConflict->action == ONCONFLICT_SELECT &&
+			root->onConflict->lockingStrength == LCS_NONE)
+		{
+			List	   *conflict_permissive_policies;
+			List	   *conflict_restrictive_policies;
+
+			get_policies_for_relation(rel, CMD_SELECT, user_id,
+									  &conflict_permissive_policies,
+									  &conflict_restrictive_policies);
+			add_with_check_options(rel, rt_index,
+								   WCO_RLS_CONFLICT_CHECK,
+								   conflict_permissive_policies,
+								   conflict_restrictive_policies,
+								   withCheckOptions,
+								   hasSubLinks,
+								   true);
 		}
 	}
 

@@ -355,6 +355,8 @@ typedef struct ModifyTable
 	OnConflictAction onConflictAction;
 	/* List of ON CONFLICT arbiter index OIDs  */
 	List	   *arbiterIndexes;
+	/* lock strength for ON CONFLICT SELECT */
+	LockClauseStrength onConflictLockingStrength;
 	/* INSERT ON CONFLICT DO UPDATE targetlist */
 	List	   *onConflictSet;
 	/* target column numbers for onConflictSet */
