@@ -649,7 +649,7 @@ transformInsertStmt(ParseState *pstate, InsertStmt *stmt)
 	ListCell   *icols;
 	ListCell   *attnos;
 	ListCell   *lc;
-	bool		isOnConflictUpdate;
+	bool		requiresUpdatePerm;
 	AclMode		targetPerms;
 
 	/* There can't be any outer WITH to worry about */
@@ -668,8 +668,10 @@ transformInsertStmt(ParseState *pstate, InsertStmt *stmt)
 
 	qry->override = stmt->override;
 
-	isOnConflictUpdate = (stmt->onConflictClause &&
-						  stmt->onConflictClause->action == ONCONFLICT_UPDATE);
+	requiresUpdatePerm = (stmt->onConflictClause &&
+						  (stmt->onConflictClause->action == ONCONFLICT_UPDATE ||
+						   (stmt->onConflictClause->action == ONCONFLICT_SELECT &&
+							stmt->onConflictClause->lockingStrength != LCS_NONE)));
 
 	/*
 	 * We have three cases to deal with: DEFAULT VALUES (selectStmt == NULL),
@@ -719,7 +721,7 @@ transformInsertStmt(ParseState *pstate, InsertStmt *stmt)
 	 * to the joinlist or namespace.
 	 */
 	targetPerms = ACL_INSERT;
-	if (isOnConflictUpdate)
+	if (requiresUpdatePerm)
 		targetPerms |= ACL_UPDATE;
 	qry->resultRelation = setTargetTable(pstate, stmt->relation,
 										 false, false, targetPerms);
@@ -1026,6 +1028,12 @@ transformInsertStmt(ParseState *pstate, InsertStmt *stmt)
 						 false, true, true);
 	}
 
+	if (stmt->onConflictClause && stmt->onConflictClause->action == ONCONFLICT_SELECT && !stmt->returningClause)
+		ereport(ERROR,
+				(errcode(ERRCODE_SYNTAX_ERROR),
+				 errmsg("ON CONFLICT DO SELECT requires a RETURNING clause"),
+				 parser_errposition(pstate, stmt->onConflictClause->location)));
+
 	/* Process ON CONFLICT, if any. */
 	if (stmt->onConflictClause)
 		qry->onConflict = transformOnConflictClause(pstate,
@@ -1252,8 +1260,15 @@ transformOnConflictClause(ParseState *pstate,
 		Assert((ParseNamespaceItem *) llast(pstate->p_namespace) == exclNSItem);
 		pstate->p_namespace = list_delete_last(pstate->p_namespace);
 	}
+	else if (onConflictClause->action == ONCONFLICT_SELECT)
+	{
+		onConflictWhere = transformWhereClause(pstate,
+											   onConflictClause->whereClause,
+											   EXPR_KIND_WHERE, "WHERE");
 
-	/* Finally, build ON CONFLICT DO [NOTHING | UPDATE] expression */
+	}
+
+	/* Finally, build ON CONFLICT DO [NOTHING | SELECT | UPDATE] expression */
 	result = makeNode(OnConflictExpr);
 
 	result->action = onConflictClause->action;
@@ -1261,6 +1276,7 @@ transformOnConflictClause(ParseState *pstate,
 	result->arbiterWhere = arbiterWhere;
 	result->constraint = arbiterConstraint;
 	result->onConflictSet = onConflictSet;
+	result->lockingStrength = onConflictClause->lockingStrength;
 	result->onConflictWhere = onConflictWhere;
 	result->exclRelIndex = exclRelIndex;
 	result->exclRelTlist = exclRelTlist;
