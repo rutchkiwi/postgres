@@ -267,10 +267,27 @@ insert into insertconflicttest values (1, 'Apple') on conflict (key) do select r
    1 | Apple
 (1 row)
 
-insert into insertconflicttest values (1, 'Apple') on conflict (key) do select where fruit <> 'Apple' returning *;
+insert into insertconflicttest as i values (1, 'Apple') on conflict (key) do select where i.fruit = 'Apple' returning *;
+ key | fruit 
+-----+-------
+   1 | Apple
+(1 row)
+
+insert into insertconflicttest as i values (1, 'Apple') on conflict (key) do select where i.fruit = 'Orange' returning *;
  key | fruit 
 -----+-------
 (0 rows)
+
+insert into insertconflicttest as i values (1, 'Orange') on conflict (key) do select where excluded.fruit = 'Apple' returning *;
+ key | fruit 
+-----+-------
+(0 rows)
+
+insert into insertconflicttest as i values (1, 'Orange') on conflict (key) do select where excluded.fruit = 'Orange' returning *;
+ key | fruit 
+-----+-------
+   1 | Apple
+(1 row)
 
 delete from insertconflicttest where fruit = 'Apple';
 insert into insertconflicttest values (1, 'Apple') on conflict (key) do select for update returning *;
@@ -285,10 +302,27 @@ insert into insertconflicttest values (1, 'Apple') on conflict (key) do select f
    1 | Apple
 (1 row)
 
-insert into insertconflicttest values (1, 'Apple') on conflict (key) do select for update where fruit <> 'Apple' returning *;
+insert into insertconflicttest as i values (1, 'Apple') on conflict (key) do select for update where i.fruit = 'Apple' returning *;
+ key | fruit 
+-----+-------
+   1 | Apple
+(1 row)
+
+insert into insertconflicttest as i values (1, 'Apple') on conflict (key) do select for update where i.fruit = 'Orange' returning *;
  key | fruit 
 -----+-------
 (0 rows)
+
+insert into insertconflicttest as i values (1, 'Orange') on conflict (key) do select for update where excluded.fruit = 'Apple' returning *;
+ key | fruit 
+-----+-------
+(0 rows)
+
+insert into insertconflicttest as i values (1, 'Orange') on conflict (key) do select for update where excluded.fruit = 'Orange' returning *;
+ key | fruit 
+-----+-------
+   1 | Apple
+(1 row)
 
 insert into insertconflicttest as ict values (3, 'Pear') on conflict (key) do select for update returning old.*, new.*, ict.*;
  key | fruit | key | fruit | key | fruit 
@@ -299,7 +333,7 @@ insert into insertconflicttest as ict values (3, 'Pear') on conflict (key) do se
 insert into insertconflicttest as ict values (3, 'Banana') on conflict (key) do select for update returning old.*, new.*, ict.*;
  key | fruit | key | fruit | key | fruit 
 -----+-------+-----+-------+-----+-------
-   3 | Pear  |     |       |   3 | Pear
+   3 | Pear  |   3 | Pear  |   3 | Pear
 (1 row)
 
 explain (costs off) insert into insertconflicttest values (1, 'Apple') on conflict (key) do select for key share returning *;

@@ -1028,11 +1028,14 @@ transformInsertStmt(ParseState *pstate, InsertStmt *stmt)
 						 false, true, true);
 	}
 
-	if (stmt->onConflictClause && stmt->onConflictClause->action == ONCONFLICT_SELECT && !stmt->returningClause)
+	/* ON CONFLICT DO SELECT requires a RETURNING clause */
+	if (stmt->onConflictClause &&
+		stmt->onConflictClause->action == ONCONFLICT_SELECT &&
+		!stmt->returningClause)
 		ereport(ERROR,
-				(errcode(ERRCODE_SYNTAX_ERROR),
-				 errmsg("ON CONFLICT DO SELECT requires a RETURNING clause"),
-				 parser_errposition(pstate, stmt->onConflictClause->location)));
+				errcode(ERRCODE_SYNTAX_ERROR),
+				errmsg("ON CONFLICT DO SELECT requires a RETURNING clause"),
+				parser_errposition(pstate, stmt->onConflictClause->location));
 
 	/* Process ON CONFLICT, if any. */
 	if (stmt->onConflictClause)
@@ -1192,12 +1195,13 @@ transformOnConflictClause(ParseState *pstate,
 	OnConflictExpr *result;
 
 	/*
-	 * If this is ON CONFLICT ... UPDATE, first create the range table entry
-	 * for the EXCLUDED pseudo relation, so that that will be present while
-	 * processing arbiter expressions.  (You can't actually reference it from
-	 * there, but this provides a useful error message if you try.)
+	 * If this is ON CONFLICT ... UPDATE/SELECT, first create the range table
+	 * entry for the EXCLUDED pseudo relation, so that that will be present
+	 * while processing arbiter expressions.  (You can't actually reference it
+	 * from there, but this provides a useful error message if you try.)
 	 */
-	if (onConflictClause->action == ONCONFLICT_UPDATE)
+	if (onConflictClause->action == ONCONFLICT_UPDATE ||
+		onConflictClause->action == ONCONFLICT_SELECT)
 	{
 		Relation	targetrel = pstate->p_target_relation;
 		RangeTblEntry *exclRte;
@@ -1226,27 +1230,28 @@ transformOnConflictClause(ParseState *pstate,
 	transformOnConflictArbiter(pstate, onConflictClause, &arbiterElems,
 							   &arbiterWhere, &arbiterConstraint);
 
-	/* Process DO UPDATE */
-	if (onConflictClause->action == ONCONFLICT_UPDATE)
+	/* Process DO UPDATE/SELECT */
+	if (onConflictClause->action == ONCONFLICT_UPDATE ||
+		onConflictClause->action == ONCONFLICT_SELECT)
 	{
 		/*
-		 * Expressions in the UPDATE targetlist need to be handled like UPDATE
-		 * not INSERT.  We don't need to save/restore this because all INSERT
-		 * expressions have been parsed already.
-		 */
-		pstate->p_is_insert = false;
-
-		/*
 		 * Add the EXCLUDED pseudo relation to the query namespace, making it
-		 * available in the UPDATE subexpressions.
+		 * available in the UPDATE/SELECT subexpressions.
 		 */
 		addNSItemToQuery(pstate, exclNSItem, false, true, true);
 
-		/*
-		 * Now transform the UPDATE subexpressions.
-		 */
-		onConflictSet =
-			transformUpdateTargetList(pstate, onConflictClause->targetList);
+		if (onConflictClause->action == ONCONFLICT_UPDATE)
+		{
+			/*
+			 * Expressions in the UPDATE targetlist need to be handled like
+			 * UPDATE not INSERT.  We don't need to save/restore this because
+			 * all INSERT expressions have been parsed already.
+			 */
+			pstate->p_is_insert = false;
+
+			onConflictSet =
+				transformUpdateTargetList(pstate, onConflictClause->targetList);
+		}
 
 		onConflictWhere = transformWhereClause(pstate,
 											   onConflictClause->whereClause,
@@ -1259,13 +1264,6 @@ transformOnConflictClause(ParseState *pstate,
 		 */
 		Assert((ParseNamespaceItem *) llast(pstate->p_namespace) == exclNSItem);
 		pstate->p_namespace = list_delete_last(pstate->p_namespace);
-	}
-	else if (onConflictClause->action == ONCONFLICT_SELECT)
-	{
-		onConflictWhere = transformWhereClause(pstate,
-											   onConflictClause->whereClause,
-											   EXPR_KIND_WHERE, "WHERE");
-
 	}
 
 	/* Finally, build ON CONFLICT DO [NOTHING | SELECT | UPDATE] expression */

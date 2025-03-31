@@ -606,6 +606,22 @@ CREATE POLICY <replaceable class="parameter">name</replaceable> ON <replaceable 
        <entry>&mdash;</entry>
        <entry>Check existing row</entry>
       </row>
+      <row>
+       <entry><command>ON CONFLICT DO SELECT</command></entry>
+       <entry>Existing &amp; new rows</entry>
+       <entry>&mdash;</entry>
+       <entry>&mdash;</entry>
+       <entry>&mdash;</entry>
+       <entry>&mdash;</entry>
+      </row>
+      <row>
+       <entry><command>ON CONFLICT DO SELECT FOR UPDATE/SHARE</command></entry>
+       <entry>Existing &amp; new rows</entry>
+       <entry>&mdash;</entry>
+       <entry>Existing row</entry>
+       <entry>&mdash;</entry>
+       <entry>&mdash;</entry>
+      </row>
      </tbody>
     </tgroup>
    </table>

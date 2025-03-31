@@ -106,11 +106,17 @@ delete from insertconflicttest where fruit = 'Apple';
 insert into insertconflicttest values (1, 'Apple') on conflict (key) do select; -- fails
 insert into insertconflicttest values (1, 'Apple') on conflict (key) do select returning *;
 insert into insertconflicttest values (1, 'Apple') on conflict (key) do select returning *;
-insert into insertconflicttest values (1, 'Apple') on conflict (key) do select where fruit <> 'Apple' returning *;
+insert into insertconflicttest as i values (1, 'Apple') on conflict (key) do select where i.fruit = 'Apple' returning *;
+insert into insertconflicttest as i values (1, 'Apple') on conflict (key) do select where i.fruit = 'Orange' returning *;
+insert into insertconflicttest as i values (1, 'Orange') on conflict (key) do select where excluded.fruit = 'Apple' returning *;
+insert into insertconflicttest as i values (1, 'Orange') on conflict (key) do select where excluded.fruit = 'Orange' returning *;
 delete from insertconflicttest where fruit = 'Apple';
 insert into insertconflicttest values (1, 'Apple') on conflict (key) do select for update returning *;
 insert into insertconflicttest values (1, 'Apple') on conflict (key) do select for update returning *;
-insert into insertconflicttest values (1, 'Apple') on conflict (key) do select for update where fruit <> 'Apple' returning *;
+insert into insertconflicttest as i values (1, 'Apple') on conflict (key) do select for update where i.fruit = 'Apple' returning *;
+insert into insertconflicttest as i values (1, 'Apple') on conflict (key) do select for update where i.fruit = 'Orange' returning *;
+insert into insertconflicttest as i values (1, 'Orange') on conflict (key) do select for update where excluded.fruit = 'Apple' returning *;
+insert into insertconflicttest as i values (1, 'Orange') on conflict (key) do select for update where excluded.fruit = 'Orange' returning *;
 insert into insertconflicttest as ict values (3, 'Pear') on conflict (key) do select for update returning old.*, new.*, ict.*;
 insert into insertconflicttest as ict values (3, 'Banana') on conflict (key) do select for update returning old.*, new.*, ict.*;
 

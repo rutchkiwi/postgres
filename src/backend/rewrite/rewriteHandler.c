@@ -656,6 +656,19 @@ rewriteRuleAction(Query *parsetree,
 	}
 
 	/*
+	 * If rule_action is INSERT .. ON CONFLICT DO SELECT, the parser should
+	 * have verified that it has a RETURNING clause, but we must also check
+	 * that the triggering query has a RETURNING clause.
+	 */
+	if (rule_action->onConflict &&
+		rule_action->onConflict->action == ONCONFLICT_SELECT &&
+		(!rule_action->returningList || !parsetree->returningList))
+		ereport(ERROR,
+				errcode(ERRCODE_SYNTAX_ERROR),
+				errmsg("ON CONFLICT DO SELECT requires a RETURNING clause"),
+				errdetail("A rule action is INSERT ... ON CONFLICT DO SELECT, which requires a RETURNING clause"));
+
+	/*
 	 * If rule_action has a RETURNING clause, then either throw it away if the
 	 * triggering query has no RETURNING clause, or rewrite it to emit what
 	 * the triggering query's RETURNING clause asks for.  Throw an error if
