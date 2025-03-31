@@ -161,6 +161,7 @@ static bool ExecOnConflictUpdate(ModifyTableContext *context,
 static bool ExecOnConflictSelect(ModifyTableContext *context,
 								 ResultRelInfo *resultRelInfo,
 								 ItemPointer conflictTid,
+								 TupleTableSlot *excludedSlot,
 								 bool canSetTag,
 								 TupleTableSlot **returning);
 static TupleTableSlot *ExecPrepareTupleRouting(ModifyTableState *mtstate,
@@ -1175,13 +1176,13 @@ ExecInsert(ModifyTableContext *context,
 					/*
 					 * In case of ON CONFLICT DO SELECT, optionally lock the
 					 * conflicting tuple, fetch it and project RETURNING on
-					 * it. Be prepared to retry if fetching fails because of a
+					 * it. Be prepared to retry if locking fails because of a
 					 * concurrent UPDATE/DELETE to the conflict tuple.
 					 */
 					TupleTableSlot *returning = NULL;
 
 					if (ExecOnConflictSelect(context, resultRelInfo,
-											 &conflictTid, canSetTag,
+											 &conflictTid, slot, canSetTag,
 											 &returning))
 					{
 						InstrCountTuples2(&mtstate->ps, 1);
@@ -2731,6 +2732,12 @@ redo_act:
 
 /*
  * ExecOnConflictLockRow --- lock the row for ON CONFLICT DO UPDATE/SELECT
+ *
+ * Try to lock tuple for update as part of speculative insertion for ON
+ * CONFLICT DO UPDATE or ON CONFLICT DO SELECT FOR UPDATE/SHARE.
+ *
+ * Returns true if the row is successfully locked, or false if the caller must
+ * retry the INSERT from scratch.
  */
 static bool
 ExecOnConflictLockRow(ModifyTableContext *context,
@@ -2888,7 +2895,7 @@ ExecOnConflictUpdate(ModifyTableContext *context,
 	/* Determine lock mode to use */
 	lockmode = ExecUpdateLockMode(context->estate, resultRelInfo);
 
-	/* Lock tuple for update. */
+	/* Lock tuple for update */
 	if (!ExecOnConflictLockRow(context, existing, conflictTid,
 							   resultRelInfo->ri_RelationDesc, lockmode, true))
 		return false;
@@ -2933,11 +2940,12 @@ ExecOnConflictUpdate(ModifyTableContext *context,
 		 * security barrier quals (if any), enforced here as RLS checks/WCOs.
 		 *
 		 * The rewriter creates UPDATE RLS checks/WCOs for UPDATE security
-		 * quals, and stores them as WCOs of "kind" WCO_RLS_CONFLICT_CHECK,
-		 * but that's almost the extent of its special handling for ON
-		 * CONFLICT DO UPDATE.
+		 * quals, and stores them as WCOs of "kind" WCO_RLS_CONFLICT_CHECK. If
+		 * SELECT rights are required on the target table, the rewriter also
+		 * adds SELECT RLS checks/WCOs for SELECT security quals, using WCOs
+		 * of the same kind, so this check enforces them too.
 		 *
-		 * The rewriter will also have associated UPDATE applicable straight
+		 * The rewriter will also have associated UPDATE-applicable straight
 		 * RLS checks/WCOs for the benefit of the ExecUpdate() call that
 		 * follows.  INSERTs and UPDATEs naturally have mutually exclusive WCO
 		 * kinds, so there is no danger of spurious over-enforcement in the
@@ -2985,13 +2993,18 @@ ExecOnConflictUpdate(ModifyTableContext *context,
 /*
  * ExecOnConflictSelect --- execute SELECT of INSERT ON CONFLICT DO SELECT
  *
- * Returns true if if we're done (with or without an update), or false if the
+ * If SELECT FOR UPDATE/SHARE is specified, try to lock tuple as part of
+ * speculative insertion.  If a qual originating from ON CONFLICT DO UPDATE is
+ * satisfied, select the row.
+ *
+ * Returns true if if we're done (with or without a select), or false if the
  * caller must retry the INSERT from scratch.
  */
 static bool
 ExecOnConflictSelect(ModifyTableContext *context,
 					 ResultRelInfo *resultRelInfo,
 					 ItemPointer conflictTid,
+					 TupleTableSlot *excludedSlot,
 					 bool canSetTag,
 					 TupleTableSlot **rslot)
 {
@@ -3049,11 +3062,13 @@ ExecOnConflictSelect(ModifyTableContext *context,
 	ExecCheckTupleVisible(context->estate, relation, existing);
 
 	/*
-	 * Make the tuple available to ExecQual and ExecProject.  EXCLUDED is not
-	 * used at all.
+	 * Make tuple and any needed join variables available to ExecQual.  The
+	 * EXCLUDED tuple is installed in ecxt_innertuple, while the target's
+	 * existing tuple is installed in the scantuple.  EXCLUDED has been made
+	 * to reference INNER_VAR in setrefs.c, but there is no other redirection.
 	 */
 	econtext->ecxt_scantuple = existing;
-	econtext->ecxt_innertuple = NULL;
+	econtext->ecxt_innertuple = excludedSlot;
 	econtext->ecxt_outertuple = NULL;
 
 	if (!ExecQual(onConflictSelectWhere, econtext))
@@ -3066,19 +3081,15 @@ ExecOnConflictSelect(ModifyTableContext *context,
 	if (resultRelInfo->ri_WithCheckOptions != NIL)
 	{
 		/*
-		 * Check target's existing tuple against UPDATE-applicable USING
+		 * Check target's existing tuple against SELECT-applicable USING
 		 * security barrier quals (if any), enforced here as RLS checks/WCOs.
 		 *
-		 * The rewriter creates UPDATE RLS checks/WCOs for UPDATE security
-		 * quals, and stores them as WCOs of "kind" WCO_RLS_CONFLICT_CHECK,
-		 * but that's almost the extent of its special handling for ON
-		 * CONFLICT DO UPDATE.
-		 *
-		 * The rewriter will also have associated UPDATE applicable straight
-		 * RLS checks/WCOs for the benefit of the ExecUpdate() call that
-		 * follows.  INSERTs and UPDATEs naturally have mutually exclusive WCO
-		 * kinds, so there is no danger of spurious over-enforcement in the
-		 * INSERT or UPDATE path.
+		 * The rewriter creates SELECT RLS checks/WCOs for SELECT security
+		 * quals, and stores them as WCOs of "kind" WCO_RLS_CONFLICT_CHECK. If
+		 * FOR UPDATE/SHARE was specified, UPDATE rights are required on the
+		 * target table, and the rewriter also adds UPDATE RLS checks/WCOs for
+		 * UPDATE security quals, using WCOs of the same kind, so this check
+		 * enforces them too.
 		 */
 		ExecWithCheckOptions(WCO_RLS_CONFLICT_CHECK, resultRelInfo,
 							 existing,
@@ -3088,8 +3099,9 @@ ExecOnConflictSelect(ModifyTableContext *context,
 	/* Parse analysis should already have disallowed this */
 	Assert(resultRelInfo->ri_projectReturning);
 
-	*rslot = ExecProcessReturning(context, resultRelInfo, CMD_INSERT,
-								  existing, NULL, context->planSlot);
+	/* Process RETURNING like an UPDATE that didn't change anything */
+	*rslot = ExecProcessReturning(context, resultRelInfo, CMD_UPDATE,
+								  existing, existing, context->planSlot);
 
 	if (canSetTag)
 		context->estate->es_processed++;
@@ -3106,6 +3118,7 @@ ExecOnConflictSelect(ModifyTableContext *context,
 	 * query.
 	 */
 	ExecClearTuple(existing);
+
 	return true;
 }
 
