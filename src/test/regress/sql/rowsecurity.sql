@@ -141,6 +141,19 @@ INSERT INTO rls_test_tgt VALUES (3, 'tgt a') ON CONFLICT (a) DO UPDATE SET b = '
 INSERT INTO rls_test_tgt VALUES (3, 'tgt c') ON CONFLICT (a) DO UPDATE SET b = 'tgt d' RETURNING *;
 ROLLBACK;
 
+-- ON CONFLICT DO SELECT should be similar to DO UPDATE, except there 
+-- is not need to check the UPDATE policy in that case.
+BEGIN;
+INSERT INTO rls_test_tgt VALUES (4, 'tgt a') ON CONFLICT (a) DO SELECT RETURNING *;
+INSERT INTO rls_test_tgt VALUES (4, 'tgt a') ON CONFLICT (a) DO SELECT RETURNING *;
+ROLLBACK;
+
+-- ON CONFLICT DO SELECT FOR UPDATE should have the exact same RLS behaviour as DO UPDATE
+BEGIN;
+INSERT INTO rls_test_tgt VALUES (5, 'tgt a') ON CONFLICT (a) DO SELECT FOR UPDATE RETURNING *;
+INSERT INTO rls_test_tgt VALUES (5, 'tgt c') ON CONFLICT (a) DO SELECT FOR UPDATE RETURNING *;
+ROLLBACK;
+
 -- MERGE should always apply SELECT USING policy clauses to both source and
 -- target rows
 MERGE INTO rls_test_tgt t USING rls_test_src s ON t.a = s.a
@@ -957,6 +970,7 @@ INSERT INTO document VALUES (1, (SELECT cid from category WHERE cname = 'novel')
 --
 RESET SESSION AUTHORIZATION;
 DROP POLICY p3_with_all ON document;
+
 
 ALTER TABLE document ADD COLUMN dnotes text DEFAULT '';
 -- all documents are readable

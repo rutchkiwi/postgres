@@ -2383,7 +2383,7 @@ typedef struct OnConflictExpr
 	Node	   *onConflictWhere;	/* qualifiers to restrict SELECT/UPDATE to */
 
 	/* ON CONFLICT SELECT */
-	LockClauseStrength lockingStrength; /* strengh of lock for DO SELECT, or
+	LockClauseStrength lockingStrength; /* strength of lock for DO SELECT, or
 										 * LCS_NONE */
 
 	/* ON CONFLICT UPDATE */

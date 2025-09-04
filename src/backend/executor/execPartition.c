@@ -735,7 +735,7 @@ ExecInitPartitionInfo(ModifyTableState *mtstate, EState *estate,
 		 */
 		if (node->onConflictAction == ONCONFLICT_UPDATE)
 		{
-			OnConflictSetState *onconfl = makeNode(OnConflictSetState);
+			OnConflictActionState *onconfl = makeNode(OnConflictActionState);
 			TupleConversionMap *map;
 
 			map = ExecGetRootToChildMap(leaf_part_rri, estate);
@@ -857,6 +857,78 @@ ExecInitPartitionInfo(ModifyTableState *mtstate, EState *estate,
 					onconfl->oc_WhereClause =
 						ExecInitQual((List *) clause, &mtstate->ps);
 				}
+			}
+		}
+		else if (node->onConflictAction == ONCONFLICT_SELECT)
+		{
+			OnConflictActionState *onconfl = makeNode(OnConflictActionState);
+			TupleConversionMap *map;
+
+			map = ExecGetRootToChildMap(leaf_part_rri, estate);
+			Assert(rootResultRelInfo->ri_onConflict != NULL);
+
+			leaf_part_rri->ri_onConflict = onconfl;
+
+			onconfl->oc_LockingStrength =
+				rootResultRelInfo->ri_onConflict->oc_LockingStrength;
+
+			/*
+			 * Need a separate existing slot for each partition, as the
+			 * partition could be of a different AM, even if the tuple
+			 * descriptors match.
+			 */
+			onconfl->oc_Existing =
+				table_slot_create(leaf_part_rri->ri_RelationDesc,
+								  &mtstate->ps.state->es_tupleTable);
+
+			/*
+			 * If the partition's tuple descriptor matches exactly the root
+			 * parent (the common case), we can re-use the parent's ON
+			 * CONFLICT DO SELECT state.  Otherwise, we need to remap the
+			 * WHERE clause for this partition's layout.
+			 */
+			if (map == NULL)
+			{
+				/*
+				 * It's safe to reuse these from the partition root, as we
+				 * only process one tuple at a time (therefore we won't
+				 * overwrite needed data in slots), and the WHERE clause
+				 * doesn't store state / is independent of the underlying
+				 * storage.
+				 */
+				onconfl->oc_WhereClause =
+					rootResultRelInfo->ri_onConflict->oc_WhereClause;
+			}
+			else if (node->onConflictWhere)
+			{
+				/*
+				 * Map the WHERE clause, if it exists.
+				 */
+				List	   *clause;
+
+				if (part_attmap == NULL)
+					part_attmap =
+						build_attrmap_by_name(RelationGetDescr(partrel),
+											  RelationGetDescr(firstResultRel),
+											  false);
+
+				clause = copyObject((List *) node->onConflictWhere);
+				clause = (List *)
+					map_variable_attnos((Node *) clause,
+										INNER_VAR, 0,
+										part_attmap,
+										RelationGetForm(partrel)->reltype,
+										&found_whole_row);
+				/* We ignore the value of found_whole_row. */
+				clause = (List *)
+					map_variable_attnos((Node *) clause,
+										firstVarno, 0,
+										part_attmap,
+										RelationGetForm(partrel)->reltype,
+										&found_whole_row);
+				/* We ignore the value of found_whole_row. */
+				onconfl->oc_WhereClause =
+					ExecInitQual(clause, &mtstate->ps);
 			}
 		}
 	}

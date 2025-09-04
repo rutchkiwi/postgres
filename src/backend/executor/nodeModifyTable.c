@@ -2997,7 +2997,7 @@ ExecOnConflictUpdate(ModifyTableContext *context,
  * speculative insertion.  If a qual originating from ON CONFLICT DO UPDATE is
  * satisfied, select the row.
  *
- * Returns true if if we're done (with or without a select), or false if the
+ * Returns true if we're done (with or without a select), or false if the
  * caller must retry the INSERT from scratch.
  */
 static bool
@@ -5201,7 +5201,7 @@ ExecInitModifyTable(ModifyTable *node, EState *estate, int eflags)
 	 */
 	if (node->onConflictAction == ONCONFLICT_UPDATE)
 	{
-		OnConflictSetState *onconfl = makeNode(OnConflictSetState);
+		OnConflictActionState *onconfl = makeNode(OnConflictActionState);
 		ExprContext *econtext;
 		TupleDesc	relationDesc;
 
@@ -5252,7 +5252,7 @@ ExecInitModifyTable(ModifyTable *node, EState *estate, int eflags)
 	}
 	else if (node->onConflictAction == ONCONFLICT_SELECT)
 	{
-		OnConflictSetState *onconfl = makeNode(OnConflictSetState);
+		OnConflictActionState *onconfl = makeNode(OnConflictActionState);
 
 		/* already exists if created by RETURNING processing above */
 		if (mtstate->ps.ps_ExprContext == NULL)
