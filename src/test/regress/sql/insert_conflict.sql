@@ -634,3 +634,14 @@ insert into parted_conflict values(0, 'cero', 1)
 
 drop table parted_conflict;
 drop function parted_conflict_update_func();
+
+
+-- DO SELECT with partitioning
+create table on_conflict_select_partitoned (a int primary key, b text) partition by list (a);
+create table on_conflict_select_partitoned_p1 partition of on_conflict_select_partitoned for values in (1);
+create table on_conflict_select_partitoned_p2 partition of on_conflict_select_partitoned for values in (2);
+
+insert into on_conflict_select_partitoned values (1, 'xxx')
+  on conflict (a) do select for update returning *;
+insert into on_conflict_select_partitoned values (1, 'xxx')
+  on conflict (a) do select for update returning *;
