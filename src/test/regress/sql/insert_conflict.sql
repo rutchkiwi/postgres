@@ -514,6 +514,7 @@ insert into parted_conflict_test values (1, 'a') on conflict do nothing;
 insert into parted_conflict_test values (1, 'a') on conflict (a) do nothing;
 insert into parted_conflict_test values (1, 'a') on conflict (a) do update set b = excluded.b;
 insert into parted_conflict_test values (1, 'a') on conflict (a) do select returning *;
+insert into parted_conflict_test values (1, 'a') on conflict (a) do select for update returning *;
 
 -- targeting partition directly will work
 insert into parted_conflict_test_1 values (1, 'a') on conflict (a) do nothing;
