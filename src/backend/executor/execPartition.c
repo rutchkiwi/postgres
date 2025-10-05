@@ -540,6 +540,7 @@ ExecInitPartitionInfo(ModifyTableState *mtstate, EState *estate,
 	 * error.  Be prepared in that case by initializing the index information
 	 * needed by ExecInsert() to perform speculative insertions.
 	 */
+	// TODO VIKTOR: must be updated?
 	if (partrel->rd_rel->relhasindex &&
 		leaf_part_rri->ri_IndexRelationDescs == NULL)
 		ExecOpenIndices(leaf_part_rri,
@@ -733,7 +734,8 @@ ExecInitPartitionInfo(ModifyTableState *mtstate, EState *estate,
 		/*
 		 * In the DO UPDATE case, we have some more state to initialize.
 		 */
-		if (node->onConflictAction == ONCONFLICT_UPDATE)
+		// TODO VIKTOR: We need to init the state for DO SELECT here
+		if (node->onConflictAction == ONCONFLICT_UPDATE || node->onConflictAction == ONCONFLICT_SELECT)
 		{
 			OnConflictSetState *onconfl = makeNode(OnConflictSetState);
 			TupleConversionMap *map;
