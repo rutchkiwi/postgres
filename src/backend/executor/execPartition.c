@@ -540,7 +540,6 @@ ExecInitPartitionInfo(ModifyTableState *mtstate, EState *estate,
 	 * error.  Be prepared in that case by initializing the index information
 	 * needed by ExecInsert() to perform speculative insertions.
 	 */
-	// TODO VIKTOR: must be updated?
 	if (partrel->rd_rel->relhasindex &&
 		leaf_part_rri->ri_IndexRelationDescs == NULL)
 		ExecOpenIndices(leaf_part_rri,
@@ -736,7 +735,7 @@ ExecInitPartitionInfo(ModifyTableState *mtstate, EState *estate,
 		 */
 		if (node->onConflictAction == ONCONFLICT_UPDATE)
 		{
-			OnConflictSetState *onconfl = makeNode(OnConflictSetState);
+			OnConflictActionState *onconfl = makeNode(OnConflictActionState);
 			TupleConversionMap *map;
 
 			map = ExecGetRootToChildMap(leaf_part_rri, estate);
@@ -862,7 +861,7 @@ ExecInitPartitionInfo(ModifyTableState *mtstate, EState *estate,
 		}
 		else if (node->onConflictAction == ONCONFLICT_SELECT)
 		{
-			OnConflictSetState *onconfl = makeNode(OnConflictSetState);
+			OnConflictActionState *onconfl = makeNode(OnConflictActionState);
 			TupleConversionMap *map;
 
 			map = ExecGetRootToChildMap(leaf_part_rri, estate);

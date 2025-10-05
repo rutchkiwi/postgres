@@ -1808,9 +1808,9 @@ OldToNewMappingData
 OnCommitAction
 OnCommitItem
 OnConflictAction
+OnConflictActionState
 OnConflictClause
 OnConflictExpr
-OnConflictSetState
 OpClassCacheEnt
 OpExpr
 OpFamilyMember
