@@ -573,6 +573,25 @@ insert into parted_conflict_test (a, b) values (1, 'b'), (2, 'c'), (4, 'b') on c
 -- should see (1, 'b'), (2, 'a'), (4, 'b')
 select * from parted_conflict_test order by a;
 
+-- test DO SELECT with multiple rows hitting different partitions
+truncate parted_conflict_test;
+insert into parted_conflict_test (a, b) values (1, 'a'), (2, 'b'), (4, 'c');
+insert into parted_conflict_test (a, b) values (1, 'x'), (2, 'y'), (4, 'z') on conflict (a) do select returning *;
+
+-- should see original values (1, 'a'), (2, 'b'), (4, 'c')
+select * from parted_conflict_test order by a;
+
+-- test DO SELECT with WHERE filtering across partitions
+insert into parted_conflict_test (a, b) values (1, 'n') on conflict (a) do select where parted_conflict_test.b = 'a' returning *;
+insert into parted_conflict_test (a, b) values (2, 'n') on conflict (a) do select where parted_conflict_test.b = 'x' returning *;
+
+-- test DO SELECT with EXCLUDED in WHERE across partitions with different layouts
+insert into parted_conflict_test (a, b) values (3, 't') on conflict (a) do select where excluded.b = 't' returning *;
+
+-- test DO SELECT FOR UPDATE across different partition layouts
+insert into parted_conflict_test (a, b) values (1, 'l') on conflict (a) do select for update returning *;
+insert into parted_conflict_test (a, b) values (3, 'l') on conflict (a) do select for update returning *;
+
 drop table parted_conflict_test;
 
 -- test behavior of inserting a conflicting tuple into an intermediate
