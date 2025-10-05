@@ -870,6 +870,9 @@ ExecInitPartitionInfo(ModifyTableState *mtstate, EState *estate,
 
 			leaf_part_rri->ri_onConflict = onconfl;
 
+			onconfl->oc_LockingStrength =
+					rootResultRelInfo->ri_onConflict->oc_LockingStrength;
+
 			/*
 			 * Need a separate existing slot for each partition, as the
 			 * partition could be of a different AM, even if the tuple
@@ -896,8 +899,6 @@ ExecInitPartitionInfo(ModifyTableState *mtstate, EState *estate,
 				 */
 				onconfl->oc_WhereClause =
 					rootResultRelInfo->ri_onConflict->oc_WhereClause;
-				onconfl->oc_LockingStrength =
-					rootResultRelInfo->ri_onConflict->oc_LockingStrength;
 			}
 			else
 			{
@@ -935,13 +936,6 @@ ExecInitPartitionInfo(ModifyTableState *mtstate, EState *estate,
 					onconfl->oc_WhereClause =
 						ExecInitQual(clause, &mtstate->ps);
 				}
-
-				/*
-				 * Locking strength doesn't need remapping, just copy it from
-				 * the root.
-				 */
-				onconfl->oc_LockingStrength =
-					rootResultRelInfo->ri_onConflict->oc_LockingStrength;
 			}
 		}
 	}

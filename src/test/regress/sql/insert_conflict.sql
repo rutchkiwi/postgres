@@ -513,13 +513,16 @@ insert into parted_conflict_test values (1, 'a') on conflict do nothing;
 -- index on a required, which does exist in parent
 insert into parted_conflict_test values (1, 'a') on conflict (a) do nothing;
 insert into parted_conflict_test values (1, 'a') on conflict (a) do update set b = excluded.b;
+insert into parted_conflict_test values (1, 'a') on conflict (a) do select returning *;
 
 -- targeting partition directly will work
 insert into parted_conflict_test_1 values (1, 'a') on conflict (a) do nothing;
 insert into parted_conflict_test_1 values (1, 'b') on conflict (a) do update set b = excluded.b;
+insert into parted_conflict_test_1 values (1, 'b') on conflict (a) do select returning b;
 
 -- index on b required, which doesn't exist in parent
-insert into parted_conflict_test values (2, 'b') on conflict (b) do update set a = excluded.a;
+insert into parted_conflict_test values (2, 'b') on conflict (b) do update set a = excluded.a; -- fail
+insert into parted_conflict_test values (2, 'b') on conflict (b) do select returning b; -- fail
 
 -- targeting partition directly will work
 insert into parted_conflict_test_1 values (2, 'b') on conflict (b) do update set a = excluded.a;
@@ -534,6 +537,7 @@ alter table parted_conflict_test attach partition parted_conflict_test_2 for val
 truncate parted_conflict_test;
 insert into parted_conflict_test values (3, 'a') on conflict (a) do update set b = excluded.b;
 insert into parted_conflict_test values (3, 'b') on conflict (a) do update set b = excluded.b;
+insert into parted_conflict_test values (3, 'a') on conflict (a) do select returning b;
 
 -- should see (3, 'b')
 select * from parted_conflict_test order by a;
@@ -544,6 +548,7 @@ create table parted_conflict_test_3 partition of parted_conflict_test for values
 truncate parted_conflict_test;
 insert into parted_conflict_test (a, b) values (4, 'a') on conflict (a) do update set b = excluded.b;
 insert into parted_conflict_test (a, b) values (4, 'b') on conflict (a) do update set b = excluded.b where parted_conflict_test.b = 'a';
+insert into parted_conflict_test (a, b) values (4, 'b') on conflict (a) do select returning b;
 
 -- should see (4, 'b')
 select * from parted_conflict_test order by a;
@@ -554,6 +559,7 @@ create table parted_conflict_test_4_1 partition of parted_conflict_test_4 for va
 truncate parted_conflict_test;
 insert into parted_conflict_test (a, b) values (5, 'a') on conflict (a) do update set b = excluded.b;
 insert into parted_conflict_test (a, b) values (5, 'b') on conflict (a) do update set b = excluded.b where parted_conflict_test.b = 'a';
+insert into parted_conflict_test (a, b) values (5, 'b') on conflict (a) do select where parted_conflict_test.b = 'a' returning b;
 
 -- should see (5, 'b')
 select * from parted_conflict_test order by a;
@@ -634,14 +640,3 @@ insert into parted_conflict values(0, 'cero', 1)
 
 drop table parted_conflict;
 drop function parted_conflict_update_func();
-
-
--- DO SELECT with partitioning
-create table on_conflict_select_partitoned (a int primary key, b text) partition by list (a);
-create table on_conflict_select_partitoned_p1 partition of on_conflict_select_partitoned for values in (1);
-create table on_conflict_select_partitoned_p2 partition of on_conflict_select_partitoned for values in (2);
-
-insert into on_conflict_select_partitoned values (1, 'xxx')
-  on conflict (a) do select for update returning *;
-insert into on_conflict_select_partitoned values (1, 'xxx')
-  on conflict (a) do select for update returning *;
