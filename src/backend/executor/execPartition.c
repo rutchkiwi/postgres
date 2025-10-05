@@ -900,42 +900,36 @@ ExecInitPartitionInfo(ModifyTableState *mtstate, EState *estate,
 				onconfl->oc_WhereClause =
 					rootResultRelInfo->ri_onConflict->oc_WhereClause;
 			}
-			else
+			else if (node->onConflictWhere) 
 			{
 				/*
-				 * If there is a WHERE clause, initialize state where it will
-				 * be evaluated, mapping the attribute numbers appropriately.
-				 * We need to map partition varattnos to the partition's
-				 * tupdesc.
+				 * Map the WHERE clause, if it exists.
 				 */
-				if (node->onConflictWhere)
-				{
-					List	   *clause;
+				List	   *clause;
 
-					if (part_attmap == NULL)
-						part_attmap =
-							build_attrmap_by_name(RelationGetDescr(partrel),
-												  RelationGetDescr(firstResultRel),
-												  false);
+				if (part_attmap == NULL)
+					part_attmap =
+						build_attrmap_by_name(RelationGetDescr(partrel),
+											  RelationGetDescr(firstResultRel),
+											  false);
 
-					clause = copyObject((List *) node->onConflictWhere);
-					clause = (List *)
-						map_variable_attnos((Node *) clause,
-											INNER_VAR, 0,
-											part_attmap,
-											RelationGetForm(partrel)->reltype,
-											&found_whole_row);
-					/* We ignore the value of found_whole_row. */
-					clause = (List *)
-						map_variable_attnos((Node *) clause,
-											firstVarno, 0,
-											part_attmap,
-											RelationGetForm(partrel)->reltype,
-											&found_whole_row);
-					/* We ignore the value of found_whole_row. */
-					onconfl->oc_WhereClause =
-						ExecInitQual(clause, &mtstate->ps);
-				}
+				clause = copyObject((List *) node->onConflictWhere);
+				clause = (List *)
+					map_variable_attnos((Node *) clause,
+										INNER_VAR, 0,
+										part_attmap,
+										RelationGetForm(partrel)->reltype,
+										&found_whole_row);
+				/* We ignore the value of found_whole_row. */
+				clause = (List *)
+					map_variable_attnos((Node *) clause,
+										firstVarno, 0,
+										part_attmap,
+										RelationGetForm(partrel)->reltype,
+										&found_whole_row);
+				/* We ignore the value of found_whole_row. */
+				onconfl->oc_WhereClause =
+					ExecInitQual(clause, &mtstate->ps);
 			}
 		}
 	}
