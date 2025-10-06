@@ -811,10 +811,52 @@ INSERT INTO document VALUES (1, (SELECT cid from category WHERE cname = 'novel')
     ON CONFLICT (did) DO UPDATE SET dauthor = 'regress_rls_carol';
 
 --
+-- INSERT ... ON CONFLICT DO SELECT and Row-level security
+--
+
+SET SESSION AUTHORIZATION regress_rls_alice;
+DROP POLICY p3_with_all ON document;
+
+CREATE POLICY p1_select_novels ON document FOR SELECT
+  USING (cid = (SELECT cid from category WHERE cname = 'novel'));
+CREATE POLICY p2_insert_own ON document FOR INSERT
+  WITH CHECK (dauthor = current_user);
+CREATE POLICY p3_update_novels ON document FOR UPDATE
+  USING (cid = (SELECT cid from category WHERE cname = 'novel'))
+  WITH CHECK (dauthor = current_user);
+
+SET SESSION AUTHORIZATION regress_rls_bob;
+
+-- DO SELECT requires SELECT rights, should succeed for novel
+INSERT INTO document VALUES (1, (SELECT cid from category WHERE cname = 'novel'), 1, 'regress_rls_bob', 'another novel')
+    ON CONFLICT (did) DO SELECT RETURNING did, dauthor, dtitle;
+
+-- DO SELECT requires SELECT rights, should fail for non-novel
+INSERT INTO document VALUES (33, (SELECT cid from category WHERE cname = 'science fiction'), 1, 'regress_rls_bob', 'another sci-fi')
+    ON CONFLICT (did) DO SELECT RETURNING did, dauthor, dtitle;
+
+-- DO SELECT with WHERE and EXCLUDED reference
+INSERT INTO document VALUES (1, (SELECT cid from category WHERE cname = 'novel'), 1, 'regress_rls_bob', 'another novel')
+    ON CONFLICT (did) DO SELECT WHERE excluded.dlevel = 1 RETURNING did, dauthor, dtitle;
+
+-- DO SELECT FOR UPDATE requires both SELECT and UPDATE rights, should succeed for novel
+INSERT INTO document VALUES (1, (SELECT cid from category WHERE cname = 'novel'), 1, 'regress_rls_bob', 'another novel')
+    ON CONFLICT (did) DO SELECT FOR UPDATE RETURNING did, dauthor, dtitle;
+
+-- DO SELECT FOR UPDATE requires UPDATE rights, should fail for non-novel
+INSERT INTO document VALUES (33, (SELECT cid from category WHERE cname = 'science fiction'), 1, 'regress_rls_bob', 'another sci-fi')
+    ON CONFLICT (did) DO SELECT FOR UPDATE RETURNING did, dauthor, dtitle;
+
+SET SESSION AUTHORIZATION regress_rls_alice;
+DROP POLICY p1_select_novels ON document;
+DROP POLICY p2_insert_own ON document;
+DROP POLICY p3_update_novels ON document;
+
+--
 -- MERGE
 --
 RESET SESSION AUTHORIZATION;
-DROP POLICY p3_with_all ON document;
+
 
 ALTER TABLE document ADD COLUMN dnotes text DEFAULT '';
 -- all documents are readable
