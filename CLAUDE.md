@@ -257,7 +257,7 @@ errors or issues.
 I did notice a couple of minor nits in the comments:
 
 
-- The word "strength" is misspelled as "strengh" in a few places.
+- The word "strength" is misspelled as "strength" in a few places.
 - There's an extra "if" in the comment "Returns true if if we're done."
 
 
