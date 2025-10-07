@@ -2997,7 +2997,7 @@ ExecOnConflictUpdate(ModifyTableContext *context,
  * speculative insertion.  If a qual originating from ON CONFLICT DO UPDATE is
  * satisfied, select the row.
  *
- * Returns true if if we're done (with or without a select), or false if the
+ * Returns true if we're done (with or without a select), or false if the
  * caller must retry the INSERT from scratch.
  */
 static bool
