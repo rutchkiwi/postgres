@@ -3653,11 +3653,12 @@ rewriteTargetView(Query *parsetree, Relation view)
 	}
 
 	/*
-	 * For INSERT .. ON CONFLICT .. DO UPDATE, we must also update assorted
-	 * stuff in the onConflict data structure.
+	 * For INSERT .. ON CONFLICT .. DO UPDATE/SELECT, we must also update 
+	 * assorted stuff in the onConflict data structure.
 	 */
 	if (parsetree->onConflict &&
-		parsetree->onConflict->action == ONCONFLICT_UPDATE)
+		(parsetree->onConflict->action == ONCONFLICT_UPDATE ||
+		 parsetree->onConflict->action == ONCONFLICT_SELECT))
 	{
 		Index		old_exclRelIndex,
 					new_exclRelIndex;
@@ -3666,28 +3667,30 @@ rewriteTargetView(Query *parsetree, Relation view)
 		List	   *tmp_tlist;
 
 		/*
-		 * Like the INSERT/UPDATE code above, update the resnos in the
-		 * auxiliary UPDATE targetlist to refer to columns of the base
-		 * relation.
+		 * For ON CONFLICT DO UPDATE, update the resnos in the auxiliary
+		 * UPDATE targetlist to refer to columns of the base relation.
 		 */
-		foreach(lc, parsetree->onConflict->onConflictSet)
+		if (parsetree->onConflict->action == ONCONFLICT_UPDATE)
 		{
-			TargetEntry *tle = (TargetEntry *) lfirst(lc);
-			TargetEntry *view_tle;
+			foreach(lc, parsetree->onConflict->onConflictSet)
+			{
+				TargetEntry *tle = (TargetEntry *) lfirst(lc);
+				TargetEntry *view_tle;
 
-			if (tle->resjunk)
-				continue;
+				if (tle->resjunk)
+					continue;
 
-			view_tle = get_tle_by_resno(view_targetlist, tle->resno);
-			if (view_tle != NULL && !view_tle->resjunk && IsA(view_tle->expr, Var))
-				tle->resno = ((Var *) view_tle->expr)->varattno;
-			else
-				elog(ERROR, "attribute number %d not found in view targetlist",
-					 tle->resno);
+				view_tle = get_tle_by_resno(view_targetlist, tle->resno);
+				if (view_tle != NULL && !view_tle->resjunk && IsA(view_tle->expr, Var))
+					tle->resno = ((Var *) view_tle->expr)->varattno;
+				else
+					elog(ERROR, "attribute number %d not found in view targetlist",
+						 tle->resno);
+			}
 		}
 
 		/*
-		 * Also, create a new RTE for the EXCLUDED pseudo-relation, using the
+		 * Create a new RTE for the EXCLUDED pseudo-relation, using the
 		 * query's new base rel (which may well have a different column list
 		 * from the view, hence we need a new column alias list).  This should
 		 * match transformOnConflictClause.  In particular, note that the

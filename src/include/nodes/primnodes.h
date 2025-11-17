@@ -2364,14 +2364,14 @@ typedef struct FromExpr
  *
  * The optimizer requires a list of inference elements, and optionally a WHERE
  * clause to infer a unique index.  The unique index (or, occasionally,
- * indexes) inferred are used to arbitrate whether or not the alternative ON
- * CONFLICT path is taken.
+ * indexes) inferred are used to arbitrate whether or not the alternative
+ * ON CONFLICT path is taken.
  *----------
  */
 typedef struct OnConflictExpr
 {
 	NodeTag		type;
-	OnConflictAction action;	/* DO NOTHING or UPDATE? */
+	OnConflictAction action;	/* NONE, DO NOTHING, DO UPDATE, DO SELECT ? */
 
 	/* Arbiter */
 	List	   *arbiterElems;	/* unique index arbiter list (of
