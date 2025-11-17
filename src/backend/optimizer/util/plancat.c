@@ -923,10 +923,16 @@ infer_arbiter_indexes(PlannerInfo *root)
 		 */
 		if (indexOidFromConstraint == idxForm->indexrelid)
 		{
-			if (idxForm->indisexclusion && onconflict->action == ONCONFLICT_UPDATE)
+			if (idxForm->indisexclusion &&
+				(onconflict->action == ONCONFLICT_UPDATE ||
+				 onconflict->action == ONCONFLICT_SELECT))
+				/* INSERT into an exclusion constraint can conflict with multiple rows.
+				 * So ON CONFLICT UPDATE OR SELECT would have to update/select mutliple rows
+				 * in those cases. Which seems weird - so block it with an error. */
 				ereport(ERROR,
 						(errcode(ERRCODE_WRONG_OBJECT_TYPE),
-						 errmsg("ON CONFLICT DO UPDATE not supported with exclusion constraints")));
+						 errmsg("ON CONFLICT DO %s not supported with exclusion constraints",
+								onconflict->action == ONCONFLICT_UPDATE ? "UPDATE" : "SELECT")));
 
 			results = lappend_oid(results, idxForm->indexrelid);
 			list_free(indexList);
