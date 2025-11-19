@@ -3586,7 +3586,7 @@ SELECT definition FROM pg_rules WHERE tablename = 'hats' ORDER BY rulename;
 -- fails without RETURNING
 INSERT INTO hats VALUES ('h7', 'blue');
 ERROR:  ON CONFLICT DO SELECT requires a RETURNING clause
-DETAIL:  A rule action is INSERT ... ON CONFLICT DO SELECT, which requires a RETURNING clause
+DETAIL:  A rule action is INSERT ... ON CONFLICT DO SELECT, which requires a RETURNING clause.
 -- works (returns conflicts)
 EXPLAIN (costs off)
 INSERT INTO hats VALUES ('h7', 'blue') RETURNING *;

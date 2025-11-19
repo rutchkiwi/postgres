@@ -7148,8 +7148,8 @@ get_insert_query_def(Query *query, deparse_context *context)
 			appendStringInfoString(buf, " DO SELECT");
 
 			/* Add FOR [KEY] UPDATE/SHARE clause if present */
-			if (confl->lockingStrength != LCS_NONE)
-				appendStringInfoString(buf, get_lock_clause_strength(confl->lockingStrength));
+			if (confl->lockStrength != LCS_NONE)
+				appendStringInfoString(buf, get_lock_clause_strength(confl->lockStrength));
 
 			/* Add a WHERE clause if given */
 			if (confl->onConflictWhere != NULL)

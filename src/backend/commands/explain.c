@@ -4679,7 +4679,7 @@ show_modifytable_info(ModifyTableState *mtstate, List *ancestors,
 		else
 		{
 			Assert(node->onConflictAction == ONCONFLICT_SELECT);
-			switch (node->onConflictLockingStrength)
+			switch (node->onConflictLockStrength)
 			{
 				case LCS_NONE:
 					resolution = "SELECT";
@@ -4695,10 +4695,6 @@ show_modifytable_info(ModifyTableState *mtstate, List *ancestors,
 					break;
 				case LCS_FORUPDATE:
 					resolution = "SELECT FOR UPDATE";
-					break;
-				default:
-					elog(ERROR, "unrecognized LockClauseStrength %d",
-						 (int) node->onConflictLockingStrength);
 					break;
 			}
 		}

@@ -2994,7 +2994,7 @@ ExecOnConflictUpdate(ModifyTableContext *context,
  * ExecOnConflictSelect --- execute SELECT of INSERT ON CONFLICT DO SELECT
  *
  * If SELECT FOR UPDATE/SHARE is specified, try to lock tuple as part of
- * speculative insertion.  If a qual originating from ON CONFLICT DO UPDATE is
+ * speculative insertion.  If a qual originating from ON CONFLICT DO SELECT is
  * satisfied, select the row.
  *
  * Returns true if we're done (with or without a select), or false if the
@@ -3013,7 +3013,7 @@ ExecOnConflictSelect(ModifyTableContext *context,
 	Relation	relation = resultRelInfo->ri_RelationDesc;
 	ExprState  *onConflictSelectWhere = resultRelInfo->ri_onConflict->oc_WhereClause;
 	TupleTableSlot *existing = resultRelInfo->ri_onConflict->oc_Existing;
-	LockClauseStrength lockstrength = resultRelInfo->ri_onConflict->oc_LockingStrength;
+	LockClauseStrength lockStrength = resultRelInfo->ri_onConflict->oc_LockStrength;
 
 	/*
 	 * Parse analysis should have blocked ON CONFLICT for all system
@@ -3023,11 +3023,12 @@ ExecOnConflictSelect(ModifyTableContext *context,
 	 */
 	Assert(!resultRelInfo->ri_needLockTagTuple);
 
-	if (lockstrength != LCS_NONE)
+	/* Lock or fetch the existing tuple to select */
+	if (lockStrength != LCS_NONE)
 	{
 		LockTupleMode lockmode;
 
-		switch (lockstrength)
+		switch (lockStrength)
 		{
 			case LCS_FORKEYSHARE:
 				lockmode = LockTupleKeyShare;
@@ -3042,7 +3043,7 @@ ExecOnConflictSelect(ModifyTableContext *context,
 				lockmode = LockTupleExclusive;
 				break;
 			default:
-				elog(ERROR, "unexpected lock strength %d", lockstrength);
+				elog(ERROR, "unexpected lock strength %d", lockStrength);
 		}
 
 		if (!ExecOnConflictLockRow(context, existing, conflictTid,
@@ -5217,24 +5218,23 @@ ExecInitModifyTable(ModifyTable *node, EState *estate, int eflags)
 	}
 
 	/*
-	 * If needed, Initialize target list, projection and qual for ON CONFLICT
-	 * DO UPDATE.
+	 * For ON CONFLICT DO UPDATE/SELECT, initialize the ON CONFLICT action
+	 * state.
 	 */
-	if (node->onConflictAction == ONCONFLICT_UPDATE)
+	if (node->onConflictAction == ONCONFLICT_UPDATE ||
+		node->onConflictAction == ONCONFLICT_SELECT)
 	{
 		OnConflictActionState *onconfl = makeNode(OnConflictActionState);
-		ExprContext *econtext;
-		TupleDesc	relationDesc;
 
 		/* already exists if created by RETURNING processing above */
 		if (mtstate->ps.ps_ExprContext == NULL)
 			ExecAssignExprContext(estate, &mtstate->ps);
 
-		econtext = mtstate->ps.ps_ExprContext;
-		relationDesc = resultRelInfo->ri_RelationDesc->rd_att;
-
-		/* create state for DO UPDATE SET operation */
+		/* action state for DO UPDATE/SELECT */
 		resultRelInfo->ri_onConflict = onconfl;
+
+		/* lock strength for DO SELECT [FOR UPDATE/SHARE] */
+		onconfl->oc_LockStrength = node->onConflictLockStrength;
 
 		/* initialize slot for the existing tuple */
 		onconfl->oc_Existing =
@@ -5242,24 +5242,36 @@ ExecInitModifyTable(ModifyTable *node, EState *estate, int eflags)
 							  &mtstate->ps.state->es_tupleTable);
 
 		/*
-		 * Create the tuple slot for the UPDATE SET projection. We want a slot
-		 * of the table's type here, because the slot will be used to insert
-		 * into the table, and for RETURNING processing - which may access
-		 * system attributes.
+		 * For ON CONFLICT DO UPDATE, initialize target list and projection.
 		 */
-		onconfl->oc_ProjSlot =
-			table_slot_create(resultRelInfo->ri_RelationDesc,
-							  &mtstate->ps.state->es_tupleTable);
+		if (node->onConflictAction == ONCONFLICT_UPDATE)
+		{
+			ExprContext *econtext;
+			TupleDesc	relationDesc;
 
-		/* build UPDATE SET projection state */
-		onconfl->oc_ProjInfo =
-			ExecBuildUpdateProjection(node->onConflictSet,
-									  true,
-									  node->onConflictCols,
-									  relationDesc,
-									  econtext,
-									  onconfl->oc_ProjSlot,
-									  &mtstate->ps);
+			econtext = mtstate->ps.ps_ExprContext;
+			relationDesc = resultRelInfo->ri_RelationDesc->rd_att;
+
+			/*
+			 * Create the tuple slot for the UPDATE SET projection. We want a
+			 * slot of the table's type here, because the slot will be used to
+			 * insert into the table, and for RETURNING processing - which may
+			 * access system attributes.
+			 */
+			onconfl->oc_ProjSlot =
+				table_slot_create(resultRelInfo->ri_RelationDesc,
+								  &mtstate->ps.state->es_tupleTable);
+
+			/* build UPDATE SET projection state */
+			onconfl->oc_ProjInfo =
+				ExecBuildUpdateProjection(node->onConflictSet,
+										  true,
+										  node->onConflictCols,
+										  relationDesc,
+										  econtext,
+										  onconfl->oc_ProjSlot,
+										  &mtstate->ps);
+		}
 
 		/* initialize state to evaluate the WHERE clause, if any */
 		if (node->onConflictWhere)
@@ -5270,34 +5282,6 @@ ExecInitModifyTable(ModifyTable *node, EState *estate, int eflags)
 									&mtstate->ps);
 			onconfl->oc_WhereClause = qualexpr;
 		}
-	}
-	else if (node->onConflictAction == ONCONFLICT_SELECT)
-	{
-		OnConflictActionState *onconfl = makeNode(OnConflictActionState);
-
-		/* already exists if created by RETURNING processing above */
-		if (mtstate->ps.ps_ExprContext == NULL)
-			ExecAssignExprContext(estate, &mtstate->ps);
-
-		/* create state for DO SELECT operation */
-		resultRelInfo->ri_onConflict = onconfl;
-
-		/* initialize slot for the existing tuple */
-		onconfl->oc_Existing =
-			table_slot_create(resultRelInfo->ri_RelationDesc,
-							  &mtstate->ps.state->es_tupleTable);
-
-		/* initialize state to evaluate the WHERE clause, if any */
-		if (node->onConflictWhere)
-		{
-			ExprState  *qualexpr;
-
-			qualexpr = ExecInitQual((List *) node->onConflictWhere,
-									&mtstate->ps);
-			onconfl->oc_WhereClause = qualexpr;
-		}
-
-		onconfl->oc_LockingStrength = node->onConflictLockingStrength;
 	}
 
 	/*

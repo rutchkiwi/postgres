@@ -2371,7 +2371,7 @@ typedef struct FromExpr
 typedef struct OnConflictExpr
 {
 	NodeTag		type;
-	OnConflictAction action;	/* NONE, DO NOTHING, DO UPDATE, DO SELECT ? */
+	OnConflictAction action;	/* DO NOTHING, SELECT, or UPDATE */
 
 	/* Arbiter */
 	List	   *arbiterElems;	/* unique index arbiter list (of
@@ -2379,15 +2379,14 @@ typedef struct OnConflictExpr
 	Node	   *arbiterWhere;	/* unique index arbiter WHERE clause */
 	Oid			constraint;		/* pg_constraint OID for arbiter */
 
-	/* both ON CONFLICT SELECT and UPDATE */
-	Node	   *onConflictWhere;	/* qualifiers to restrict SELECT/UPDATE to */
+	/* ON CONFLICT DO SELECT */
+	LockClauseStrength lockStrength;	/* strength of lock for DO SELECT */
 
-	/* ON CONFLICT SELECT */
-	LockClauseStrength lockingStrength; /* strength of lock for DO SELECT, or
-										 * LCS_NONE */
-
-	/* ON CONFLICT UPDATE */
+	/* ON CONFLICT DO UPDATE */
 	List	   *onConflictSet;	/* List of ON CONFLICT SET TargetEntrys */
+
+	/* both ON CONFLICT DO SELECT and UPDATE */
+	Node	   *onConflictWhere;	/* qualifiers to restrict SELECT/UPDATE */
 	int			exclRelIndex;	/* RT index of 'excluded' relation */
 	List	   *exclRelTlist;	/* tlist of the EXCLUDED pseudo relation */
 } OnConflictExpr;

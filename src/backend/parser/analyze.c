@@ -668,10 +668,14 @@ transformInsertStmt(ParseState *pstate, InsertStmt *stmt)
 
 	qry->override = stmt->override;
 
+	/*
+	 * ON CONFLICT DO UPDATE and ON CONFLICT DO SELECT FOR UPDATE/SHARE
+	 * require UPDATE permission on the target relation.
+	 */
 	requiresUpdatePerm = (stmt->onConflictClause &&
 						  (stmt->onConflictClause->action == ONCONFLICT_UPDATE ||
 						   (stmt->onConflictClause->action == ONCONFLICT_SELECT &&
-							stmt->onConflictClause->lockingStrength != LCS_NONE)));
+							stmt->onConflictClause->lockStrength != LCS_NONE)));
 
 	/*
 	 * We have three cases to deal with: DEFAULT VALUES (selectStmt == NULL),
@@ -1273,8 +1277,8 @@ transformOnConflictClause(ParseState *pstate,
 	result->arbiterElems = arbiterElems;
 	result->arbiterWhere = arbiterWhere;
 	result->constraint = arbiterConstraint;
+	result->lockStrength = onConflictClause->lockStrength;
 	result->onConflictSet = onConflictSet;
-	result->lockingStrength = onConflictClause->lockingStrength;
 	result->onConflictWhere = onConflictWhere;
 	result->exclRelIndex = exclRelIndex;
 	result->exclRelTlist = exclRelTlist;

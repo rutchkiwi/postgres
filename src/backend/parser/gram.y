@@ -12445,7 +12445,7 @@ opt_on_conflict:
 					$$->action = ONCONFLICT_SELECT;
 					$$->infer = $3;
 					$$->targetList = NIL;
-					$$->lockingStrength = $6;
+					$$->lockStrength = $6;
 					$$->whereClause = $7;
 					$$->location = @1;
 				}
@@ -12456,7 +12456,7 @@ opt_on_conflict:
 					$$->action = ONCONFLICT_UPDATE;
 					$$->infer = $3;
 					$$->targetList = $7;
-					$$->lockingStrength = LCS_NONE;
+					$$->lockStrength = LCS_NONE;
 					$$->whereClause = $8;
 					$$->location = @1;
 				}
@@ -12467,7 +12467,7 @@ opt_on_conflict:
 					$$->action = ONCONFLICT_NOTHING;
 					$$->infer = $3;
 					$$->targetList = NIL;
-					$$->lockingStrength = LCS_NONE;
+					$$->lockStrength = LCS_NONE;
 					$$->whereClause = NULL;
 					$$->location = @1;
 				}

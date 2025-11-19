@@ -7036,17 +7036,20 @@ make_modifytable(PlannerInfo *root, Plan *subplan,
 	if (!onconflict)
 	{
 		node->onConflictAction = ONCONFLICT_NONE;
+		node->arbiterIndexes = NIL;
+		node->onConflictLockStrength = LCS_NONE;
 		node->onConflictSet = NIL;
 		node->onConflictCols = NIL;
 		node->onConflictWhere = NULL;
-		node->onConflictLockingStrength = LCS_NONE;
-		node->arbiterIndexes = NIL;
 		node->exclRelRTI = 0;
 		node->exclRelTlist = NIL;
 	}
 	else
 	{
 		node->onConflictAction = onconflict->action;
+
+		/* Lock strength for ON CONFLICT SELECT [FOR UPDATE/SHARE] */
+		node->onConflictLockStrength = onconflict->lockStrength;
 
 		/*
 		 * Here we convert the ON CONFLICT UPDATE tlist, if any, to the
@@ -7058,7 +7061,6 @@ make_modifytable(PlannerInfo *root, Plan *subplan,
 		node->onConflictCols =
 			extract_update_targetlist_colnos(node->onConflictSet);
 		node->onConflictWhere = onconflict->onConflictWhere;
-		node->onConflictLockingStrength = onconflict->lockingStrength;
 
 		/*
 		 * If a set of unique index inference elements was provided (an

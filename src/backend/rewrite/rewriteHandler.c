@@ -666,7 +666,7 @@ rewriteRuleAction(Query *parsetree,
 		ereport(ERROR,
 				errcode(ERRCODE_SYNTAX_ERROR),
 				errmsg("ON CONFLICT DO SELECT requires a RETURNING clause"),
-				errdetail("A rule action is INSERT ... ON CONFLICT DO SELECT, which requires a RETURNING clause"));
+				errdetail("A rule action is INSERT ... ON CONFLICT DO SELECT, which requires a RETURNING clause."));
 
 	/*
 	 * If rule_action has a RETURNING clause, then either throw it away if the
@@ -3653,7 +3653,7 @@ rewriteTargetView(Query *parsetree, Relation view)
 	}
 
 	/*
-	 * For INSERT .. ON CONFLICT .. DO UPDATE/SELECT, we must also update 
+	 * For INSERT .. ON CONFLICT .. DO UPDATE/SELECT, we must also update
 	 * assorted stuff in the onConflict data structure.
 	 */
 	if (parsetree->onConflict &&
@@ -3670,23 +3670,20 @@ rewriteTargetView(Query *parsetree, Relation view)
 		 * For ON CONFLICT DO UPDATE, update the resnos in the auxiliary
 		 * UPDATE targetlist to refer to columns of the base relation.
 		 */
-		if (parsetree->onConflict->action == ONCONFLICT_UPDATE)
+		foreach(lc, parsetree->onConflict->onConflictSet)
 		{
-			foreach(lc, parsetree->onConflict->onConflictSet)
-			{
-				TargetEntry *tle = (TargetEntry *) lfirst(lc);
-				TargetEntry *view_tle;
+			TargetEntry *tle = (TargetEntry *) lfirst(lc);
+			TargetEntry *view_tle;
 
-				if (tle->resjunk)
-					continue;
+			if (tle->resjunk)
+				continue;
 
-				view_tle = get_tle_by_resno(view_targetlist, tle->resno);
-				if (view_tle != NULL && !view_tle->resjunk && IsA(view_tle->expr, Var))
-					tle->resno = ((Var *) view_tle->expr)->varattno;
-				else
-					elog(ERROR, "attribute number %d not found in view targetlist",
-						 tle->resno);
-			}
+			view_tle = get_tle_by_resno(view_targetlist, tle->resno);
+			if (view_tle != NULL && !view_tle->resjunk && IsA(view_tle->expr, Var))
+				tle->resno = ((Var *) view_tle->expr)->varattno;
+			else
+				elog(ERROR, "attribute number %d not found in view targetlist",
+					 tle->resno);
 		}
 
 		/*
