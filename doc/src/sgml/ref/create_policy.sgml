@@ -574,7 +574,7 @@ CREATE POLICY <replaceable class="parameter">name</replaceable> ON <replaceable 
       </row>
        <row>
        <entry><command>ON CONFLICT DO SELECT</command></entry>
-       <entry>Check existing rows</entry>
+       <entry>Check existing row</entry>
        <entry>&mdash;</entry>
        <entry>&mdash;</entry>
        <entry>&mdash;</entry>
@@ -582,7 +582,7 @@ CREATE POLICY <replaceable class="parameter">name</replaceable> ON <replaceable 
       </row>
       <row>
        <entry><command>ON CONFLICT DO SELECT FOR UPDATE/SHARE</command></entry>
-       <entry>Check existing rows</entry>
+       <entry>Check existing row</entry>
        <entry>&mdash;</entry>
        <entry>Existing row</entry>
        <entry>&mdash;</entry>

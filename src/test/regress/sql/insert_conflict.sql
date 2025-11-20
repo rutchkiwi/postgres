@@ -157,6 +157,9 @@ insert into insertconflicttest as ict values (3, 'Banana') on conflict (key) do 
 
 explain (costs off) insert into insertconflicttest values (1, 'Apple') on conflict (key) do select for key share returning *;
 
+truncate insertconflicttest;
+insert into insertconflicttest values (1, 'Apple'), (2, 'Orange');
+
 -- Give good diagnostic message when EXCLUDED.* spuriously referenced from
 -- RETURNING:
 insert into insertconflicttest values (1, 'Apple') on conflict (key) do update set fruit = excluded.fruit RETURNING excluded.fruit;
@@ -168,18 +171,18 @@ insert into insertconflicttest values (1, 'Apple') on conflict (keyy) do update 
 insert into insertconflicttest values (1, 'Apple') on conflict (key) do update set fruit = excluded.fruitt;
 
 -- inference fails:
-insert into insertconflicttest values (4, 'Kiwi') on conflict (key, fruit) do update set fruit = excluded.fruit;
-insert into insertconflicttest values (5, 'Mango') on conflict (fruit, key) do update set fruit = excluded.fruit;
-insert into insertconflicttest values (6, 'Lemon') on conflict (fruit) do update set fruit = excluded.fruit;
-insert into insertconflicttest values (7, 'Passionfruit') on conflict (lower(fruit)) do update set fruit = excluded.fruit;
+insert into insertconflicttest values (3, 'Kiwi') on conflict (key, fruit) do update set fruit = excluded.fruit;
+insert into insertconflicttest values (4, 'Mango') on conflict (fruit, key) do update set fruit = excluded.fruit;
+insert into insertconflicttest values (5, 'Lemon') on conflict (fruit) do update set fruit = excluded.fruit;
+insert into insertconflicttest values (6, 'Passionfruit') on conflict (lower(fruit)) do update set fruit = excluded.fruit;
 
 -- Check the target relation can be aliased
-insert into insertconflicttest AS ict values (7, 'Passionfruit') on conflict (key) do update set fruit = excluded.fruit; -- ok, no reference to target table
-insert into insertconflicttest AS ict values (7, 'Passionfruit') on conflict (key) do update set fruit = ict.fruit; -- ok, alias
-insert into insertconflicttest AS ict values (7, 'Passionfruit') on conflict (key) do update set fruit = insertconflicttest.fruit; -- error, references aliased away name
+insert into insertconflicttest AS ict values (6, 'Passionfruit') on conflict (key) do update set fruit = excluded.fruit; -- ok, no reference to target table
+insert into insertconflicttest AS ict values (6, 'Passionfruit') on conflict (key) do update set fruit = ict.fruit; -- ok, alias
+insert into insertconflicttest AS ict values (6, 'Passionfruit') on conflict (key) do update set fruit = insertconflicttest.fruit; -- error, references aliased away name
 
 -- Check helpful hint when qualifying set column with target table
-insert into insertconflicttest values (4, 'Kiwi') on conflict (key, fruit) do update set insertconflicttest.fruit = 'Mango';
+insert into insertconflicttest values (3, 'Kiwi') on conflict (key, fruit) do update set insertconflicttest.fruit = 'Mango';
 
 drop index key_index;
 
@@ -189,14 +192,14 @@ drop index key_index;
 create unique index comp_key_index on insertconflicttest(key, fruit);
 
 -- inference succeeds:
-insert into insertconflicttest values (8, 'Raspberry') on conflict (key, fruit) do update set fruit = excluded.fruit;
-insert into insertconflicttest values (9, 'Lime') on conflict (fruit, key) do update set fruit = excluded.fruit;
+insert into insertconflicttest values (7, 'Raspberry') on conflict (key, fruit) do update set fruit = excluded.fruit;
+insert into insertconflicttest values (8, 'Lime') on conflict (fruit, key) do update set fruit = excluded.fruit;
 
 -- inference fails:
-insert into insertconflicttest values (10, 'Banana') on conflict (key) do update set fruit = excluded.fruit;
-insert into insertconflicttest values (11, 'Blueberry') on conflict (key, key, key) do update set fruit = excluded.fruit;
-insert into insertconflicttest values (12, 'Cherry') on conflict (key, lower(fruit)) do update set fruit = excluded.fruit;
-insert into insertconflicttest values (13, 'Date') on conflict (lower(fruit), key) do update set fruit = excluded.fruit;
+insert into insertconflicttest values (9, 'Banana') on conflict (key) do update set fruit = excluded.fruit;
+insert into insertconflicttest values (10, 'Blueberry') on conflict (key, key, key) do update set fruit = excluded.fruit;
+insert into insertconflicttest values (11, 'Cherry') on conflict (key, lower(fruit)) do update set fruit = excluded.fruit;
+insert into insertconflicttest values (12, 'Date') on conflict (lower(fruit), key) do update set fruit = excluded.fruit;
 
 drop index comp_key_index;
 
@@ -207,12 +210,12 @@ create unique index part_comp_key_index on insertconflicttest(key, fruit) where 
 create unique index expr_part_comp_key_index on insertconflicttest(key, lower(fruit)) where key < 5;
 
 -- inference fails:
-insert into insertconflicttest values (14, 'Grape') on conflict (key, fruit) do update set fruit = excluded.fruit;
-insert into insertconflicttest values (15, 'Raisin') on conflict (fruit, key) do update set fruit = excluded.fruit;
-insert into insertconflicttest values (16, 'Cranberry') on conflict (key) do update set fruit = excluded.fruit;
-insert into insertconflicttest values (17, 'Melon') on conflict (key, key, key) do update set fruit = excluded.fruit;
-insert into insertconflicttest values (18, 'Mulberry') on conflict (key, lower(fruit)) do update set fruit = excluded.fruit;
-insert into insertconflicttest values (19, 'Pineapple') on conflict (lower(fruit), key) do update set fruit = excluded.fruit;
+insert into insertconflicttest values (13, 'Grape') on conflict (key, fruit) do update set fruit = excluded.fruit;
+insert into insertconflicttest values (14, 'Raisin') on conflict (fruit, key) do update set fruit = excluded.fruit;
+insert into insertconflicttest values (15, 'Cranberry') on conflict (key) do update set fruit = excluded.fruit;
+insert into insertconflicttest values (16, 'Melon') on conflict (key, key, key) do update set fruit = excluded.fruit;
+insert into insertconflicttest values (17, 'Mulberry') on conflict (key, lower(fruit)) do update set fruit = excluded.fruit;
+insert into insertconflicttest values (18, 'Pineapple') on conflict (lower(fruit), key) do update set fruit = excluded.fruit;
 
 drop index part_comp_key_index;
 drop index expr_part_comp_key_index;

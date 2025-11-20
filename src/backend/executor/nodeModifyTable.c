@@ -3023,8 +3023,13 @@ ExecOnConflictSelect(ModifyTableContext *context,
 	 */
 	Assert(!resultRelInfo->ri_needLockTagTuple);
 
-	/* Lock or fetch the existing tuple to select */
-	if (lockStrength != LCS_NONE)
+	if (lockStrength == LCS_NONE)
+	{
+		if (!table_tuple_fetch_row_version(relation, conflictTid, SnapshotAny, existing))
+			/* The pre-existing tuple was deleted */
+			return false;
+	}
+	else
 	{
 		LockTupleMode lockmode;
 
@@ -3050,12 +3055,7 @@ ExecOnConflictSelect(ModifyTableContext *context,
 								   resultRelInfo->ri_RelationDesc, lockmode, false))
 			return false;
 	}
-	else
-	{
-		if (!table_tuple_fetch_row_version(relation, conflictTid, SnapshotAny, existing))
-			return false;
-	}
-
+	
 	/*
 	 * For the same reasons as ExecOnConflictUpdate, we must verify that the
 	 * tuple is visible to our snapshot.
@@ -3097,11 +3097,12 @@ ExecOnConflictSelect(ModifyTableContext *context,
 							 mtstate->ps.state);
 	}
 
-	/* Parse analysis should already have disallowed this */
+	/* Parse analysis should already have disallowed this, as RETURNING 
+	 * is required for DO SELECT.
+	 */
 	Assert(resultRelInfo->ri_projectReturning);
 
-	/* Process RETURNING like an UPDATE that didn't change anything */
-	*rslot = ExecProcessReturning(context, resultRelInfo, CMD_UPDATE,
+	*rslot = ExecProcessReturning(context, resultRelInfo, CMD_INSERT,
 								  existing, existing, context->planSlot);
 
 	if (canSetTag)
