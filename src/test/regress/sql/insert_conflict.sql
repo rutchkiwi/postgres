@@ -101,6 +101,41 @@ insert into insertconflicttest
 values (1, 'Apple'), (2, 'Orange')
 on conflict (key) do update set (fruit, key) = (excluded.fruit, excluded.key);
 
+----- INSERT ON CONFLICT DO SELECT PERMISSION TESTS ---
+create table conflictselect_perv(key int4, fruit text);
+create unique index x_idx on conflictselect_perv(key);
+create role regress_conflict_alice;
+grant all on schema public to regress_conflict_alice;
+grant insert on conflictselect_perv to regress_conflict_alice;
+grant select(key) on conflictselect_perv to regress_conflict_alice;
+
+set role regress_conflict_alice;
+insert into conflictselect_perv as i values (1, 'Apple') on conflict (key) do select where i.key = 1 returning 1; --ok
+insert into conflictselect_perv as i values (1, 'Apple') on conflict (key) do select where i.fruit = 'Apple' returning 1; --fail
+
+reset role;
+grant select(fruit) on conflictselect_perv to regress_conflict_alice;
+set role regress_conflict_alice;
+insert into conflictselect_perv as i values (1, 'Apple') on conflict (key) do select where i.fruit = 'Apple' returning 1; --ok
+insert into conflictselect_perv as i values (1, 'Apple') on conflict (key) do select for update where i.fruit = 'Apple' returning 1; --fail
+insert into conflictselect_perv as i values (1, 'Apple') on conflict (key) do select for no key update where i.fruit = 'Apple' returning 1; --fail
+insert into conflictselect_perv as i values (1, 'Apple') on conflict (key) do select for share where i.fruit = 'Apple' returning 1; --fail
+insert into conflictselect_perv as i values (1, 'Apple') on conflict (key) do select for key share where i.fruit = 'Apple' returning 1; --fail
+
+reset role;
+grant update (fruit) on conflictselect_perv to regress_conflict_alice;
+set role regress_conflict_alice;
+insert into conflictselect_perv as i values (1, 'Apple') on conflict (key) do select for update where i.fruit = 'Apple' returning *;
+insert into conflictselect_perv as i values (1, 'Apple') on conflict (key) do select for no key update where i.fruit = 'Apple' returning *;
+insert into conflictselect_perv as i values (1, 'Apple') on conflict (key) do select for share where i.fruit = 'Apple' returning *;
+insert into conflictselect_perv as i values (1, 'Apple') on conflict (key) do select for key share where i.fruit = 'Apple' returning *;
+
+reset role;
+drop table conflictselect_perv;
+revoke all on schema public from regress_conflict_alice;
+drop role regress_conflict_alice;
+------- END OF PERMISSION TESTS ------------
+
 -- DO SELECT
 delete from insertconflicttest where fruit = 'Apple';
 insert into insertconflicttest values (1, 'Apple') on conflict (key) do select; -- fails
@@ -531,7 +566,7 @@ insert into parted_conflict_test_1 values (2, 'b') on conflict (b) do update set
 -- should see (2, 'b')
 select * from parted_conflict_test order by a;
 
--- now check that DO UPDATE works correctly for target partition with
+-- now check that DO UPDATE/SELECT works correctly for target partition with
 -- different attribute numbers
 create table parted_conflict_test_2 (b char, a int unique);
 alter table parted_conflict_test attach partition parted_conflict_test_2 for values in (3);
@@ -539,6 +574,8 @@ truncate parted_conflict_test;
 insert into parted_conflict_test values (3, 'a') on conflict (a) do update set b = excluded.b;
 insert into parted_conflict_test values (3, 'b') on conflict (a) do update set b = excluded.b;
 insert into parted_conflict_test values (3, 'a') on conflict (a) do select returning b;
+insert into parted_conflict_test values (3, 'a') on conflict (a) do select where excluded.b = 'a' returning parted_conflict_test;
+insert into parted_conflict_test values (3, 'a') on conflict (a) do select where parted_conflict_test.b = 'b' returning b;
 
 -- should see (3, 'b')
 select * from parted_conflict_test order by a;
