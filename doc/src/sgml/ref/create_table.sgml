@@ -1380,7 +1380,7 @@ WITH ( MODULUS <replaceable class="parameter">numeric_literal</replaceable>, REM
       clause.  <literal>NOT NULL</literal> and <literal>CHECK</literal> constraints are not
       deferrable.  Note that deferrable constraints cannot be used as
       conflict arbitrators in an <command>INSERT</command> statement that
-      includes an <literal>ON CONFLICT DO UPDATE</literal> clause.
+      includes an <literal>ON CONFLICT DO UPDATE / SELECT</literal> clause.
      </para>
     </listitem>
    </varlistentry>

@@ -115,6 +115,10 @@ INSERT INTO <replaceable class="parameter">table_name</replaceable> [ AS <replac
    present, <literal>UPDATE</literal> privilege on the table is also
    required. If <literal>ON CONFLICT DO SELECT</literal> is present,
    <literal>SELECT</literal> privilege on the table is required.
+   If <literal>ON CONFLICT DO SELECT</literal> is used with
+   <literal>FOR UPDATE</literal> or <literal>FOR SHARE</literal>,
+   <literal>UPDATE</literal> privilege is also required on at least one
+   column, in addition to <literal>SELECT</literal> privilege.
   </para>
 
   <para>
@@ -122,13 +126,13 @@ INSERT INTO <replaceable class="parameter">table_name</replaceable> [ AS <replac
    <literal>INSERT</literal> privilege on the listed columns.
    Similarly, when <literal>ON CONFLICT DO UPDATE</literal> is specified, you
    only need <literal>UPDATE</literal> privilege on the column(s) that are
-   listed to be updated.  However, <literal>ON CONFLICT DO UPDATE</literal>
+   listed to be updated. However, <literal>ON CONFLICT DO UPDATE</literal>
    also requires <literal>SELECT</literal> privilege on any column whose
    values are read in the <literal>ON CONFLICT DO UPDATE</literal>
-   expressions or <replaceable>condition</replaceable>.
-   For <literal>ON CONFLICT DO SELECT</literal>, <literal>SELECT</literal>
-   privilege is required on any column whose values are read in the
-   <replaceable>condition</replaceable>.
+   expressions or <replaceable>condition</replaceable>. If using a 
+   <literal>WHERE</literal> with <literal>ON CONFLICT DO UPDATE / SELECT </literal>, 
+   you must have <literal>SELECT</literal> privilege on the columns referenced 
+   in the <literal>WHERE</literal> clause.
   </para>
 
   <para>
@@ -599,7 +603,7 @@ INSERT INTO <replaceable class="parameter">table_name</replaceable> [ AS <replac
     </variablelist>
    <para>
     Note that exclusion constraints are not supported as arbiters with
-    <literal>ON CONFLICT DO UPDATE</literal>. In all cases, only
+    <literal>ON CONFLICT DO UPDATE / SELECT</literal>. In all cases, only
     <literal>NOT DEFERRABLE</literal> constraints and unique indexes
     are supported as arbiters.
    </para>
@@ -667,8 +671,7 @@ INSERT <replaceable>oid</replaceable> <replaceable class="parameter">count</repl
    If the <command>INSERT</command> command contains a <literal>RETURNING</literal>
    clause, the result will be similar to that of a <command>SELECT</command>
    statement containing the columns and values defined in the
-   <literal>RETURNING</literal> list, computed over the row(s) inserted or
-   updated by the command.
+   <literal>RETURNING</literal> list, computed over the row(s) affected by the command.
   </para>
  </refsect1>
 
