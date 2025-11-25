@@ -3049,7 +3049,7 @@ ExecOnConflictSelect(ModifyTableContext *context,
 				break;
 			case LCS_NONE:
 				lockmode = LockTupleExclusive; /* keep compiler quiet */
-				elog(ERROR, "unexpected lock strength %d", lockStrength);
+				/*elog(ERROR, "unexpected lock strength %d", lockStrength);*/
 				break;
 		}
 
