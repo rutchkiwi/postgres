@@ -939,10 +939,18 @@ infer_arbiter_indexes(PlannerInfo *root)
 		 */
 		if (indexOidFromConstraint == idxForm->indexrelid)
 		{
-			if (idxForm->indisexclusion && onconflict->action == ONCONFLICT_UPDATE)
+			/*
+			 * ON CONFLICT DO UPDATE/SELECT are not supported with exclusion
+			 * constraints (they require a unique index, to ensure that there
+			 * is only one conflicting row to update/select).
+			 */
+			if (idxForm->indisexclusion &&
+				(onconflict->action == ONCONFLICT_UPDATE ||
+				 onconflict->action == ONCONFLICT_SELECT))
 				ereport(ERROR,
-						(errcode(ERRCODE_WRONG_OBJECT_TYPE),
-						 errmsg("ON CONFLICT DO UPDATE not supported with exclusion constraints")));
+						errcode(ERRCODE_WRONG_OBJECT_TYPE),
+						errmsg("ON CONFLICT DO %s not supported with exclusion constraints",
+							   onconflict->action == ONCONFLICT_UPDATE ? "UPDATE" : "SELECT"));
 
 			results = lappend_oid(results, idxForm->indexrelid);
 			foundValid |= idxForm->indisvalid;
