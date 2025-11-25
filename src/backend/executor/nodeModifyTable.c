@@ -3099,9 +3099,7 @@ ExecOnConflictSelect(ModifyTableContext *context,
 							 mtstate->ps.state);
 	}
 
-	/* Parse analysis should already have disallowed this, as RETURNING
-	 * is required for DO SELECT.
-	 */
+	/* RETURNING is required for DO SELECT */
 	Assert(resultRelInfo->ri_projectReturning);
 
 	*rslot = ExecProcessReturning(context, resultRelInfo, CMD_INSERT,

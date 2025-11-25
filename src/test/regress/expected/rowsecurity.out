@@ -218,7 +218,7 @@ NOTICE:  SELECT USING on rls_test_tgt.(3,"tgt d","TGT D")
 (1 row)
 
 ROLLBACK;
--- ON CONFLICT DO SELECT should be similar to DO UPDATE, except there 
+-- ON CONFLICT DO SELECT should be similar to DO UPDATE, except there
 -- is not need to check the UPDATE policy in that case.
 BEGIN;
 INSERT INTO rls_test_tgt VALUES (4, 'tgt a') ON CONFLICT (a) DO SELECT RETURNING *;
