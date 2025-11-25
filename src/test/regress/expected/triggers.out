@@ -1745,6 +1745,19 @@ insert into upsert values(8, 'yellow') on conflict (key) do update set color = '
 WARNING:  before insert (new): (8,yellow)
 WARNING:  before insert (new, modified): (9,"yellow trig modified")
 WARNING:  after insert (new): (9,"yellow trig modified")
+insert into upsert values(3, 'orange') on conflict (key) do select for update returning old.*, new.*, upsert.*;
+WARNING:  before insert (new): (3,orange)
+ key |           color           | key |           color           | key |           color           
+-----+---------------------------+-----+---------------------------+-----+---------------------------
+   3 | updated red trig modified |   3 | updated red trig modified |   3 | updated red trig modified
+(1 row)
+
+insert into upsert values(3, 'orange') on conflict (key) do select for update where upsert.key = 4 returning old.*, new.*, upsert.*;
+WARNING:  before insert (new): (3,orange)
+ key | color | key | color | key | color 
+-----+-------+-----+-------+-----+-------
+(0 rows)
+
 select * from upsert;
  key |            color            
 -----+-----------------------------
