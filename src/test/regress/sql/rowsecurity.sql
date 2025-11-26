@@ -977,7 +977,7 @@ CREATE POLICY p1_select_novels ON document FOR SELECT
 CREATE POLICY p2_insert_own ON document FOR INSERT
   WITH CHECK (dauthor = current_user);
 CREATE POLICY p3_update_novels ON document FOR UPDATE
-  USING (cid = (SELECT cid from category WHERE cname = 'novel'))
+  USING (cid = (SELECT cid from category WHERE cname = 'novel') AND dlevel = 1)
   WITH CHECK (dauthor = current_user);
 
 SET SESSION AUTHORIZATION regress_rls_bob;
@@ -994,8 +994,12 @@ INSERT INTO document VALUES (33, (SELECT cid from category WHERE cname = 'scienc
 INSERT INTO document VALUES (1, (SELECT cid from category WHERE cname = 'novel'), 1, 'regress_rls_bob', 'another novel')
     ON CONFLICT (did) DO SELECT WHERE excluded.dlevel = 1 RETURNING did, dauthor, dtitle;
 
--- DO SELECT FOR UPDATE requires both SELECT and UPDATE rights, should succeed for novel
+-- DO SELECT FOR UPDATE requires both SELECT and UPDATE rights, should succeed for novel and dlevel = 1
 INSERT INTO document VALUES (1, (SELECT cid from category WHERE cname = 'novel'), 1, 'regress_rls_bob', 'another novel')
+    ON CONFLICT (did) DO SELECT FOR UPDATE RETURNING did, dauthor, dtitle;
+
+-- should fail because existing row does not ok with UPDATE USING policy
+INSERT INTO document VALUES (2, (SELECT cid from category WHERE cname = 'novel'), 1, 'regress_rls_bob', 'another novel')
     ON CONFLICT (did) DO SELECT FOR UPDATE RETURNING did, dauthor, dtitle;
 
 -- DO SELECT FOR UPDATE requires UPDATE rights, should fail for non-novel
