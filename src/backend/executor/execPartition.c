@@ -847,8 +847,8 @@ ExecInitPartitionInfo(ModifyTableState *mtstate, EState *estate,
 				 * For both ON CONFLICT DO UPDATE and ON CONFLICT DO SELECT,
 				 * there may be a WHERE clause.  If so, initialize state where
 				 * it will be evaluated, mapping the attribute numbers
-				 * appropriately.  As with onConflictSet, we need to map
-				 * partition varattnos twice, to catch both the EXCLUDED
+				 * appropriately.  Like we did for onConflictSet above, we need
+				 * to map partition varattnos twice, to catch both the EXCLUDED
 				 * pseudo-relation (INNER_VAR), and the main target relation
 				 * (firstVarno).
 				 */

@@ -4636,10 +4636,10 @@ l3:
 	if (result == TM_Invisible)
 	{
 		/*
-		 * This is possible, but only when locking a tuple for ON CONFLICT
-		 * UPDATE.  We return this value here rather than throwing an error in
-		 * order to give that case the opportunity to throw a more specific
-		 * error.
+		 * This is possible when locking a tuple for ON CONFLICT UPDATE or ON
+		 * CONFLICT DO SELECT.  We return this value here rather than throwing
+		 * an error in order to give that case the opportunity to throw a more
+		 * specific error.
 		 */
 		result = TM_Invisible;
 		goto out_locked;
