@@ -859,9 +859,9 @@ INSERT INTO distributors (did, dname) VALUES (11, 'Global Electronics')
 </programlisting>
   </para>
   <para>
-   Insert a new distributor if the name doesn't match, otherwise return
-   the existing row.  This example uses the <varname>excluded</varname>
-   table in the WHERE clause to filter results:
+   Insert a new distributor if the ID doesn't match, otherwise return
+   the existing row.  This example uses the <varname>EXCLUDED</varname>
+   table in the <literal>WHERE</literal> clause to filter results:
 <programlisting>
 INSERT INTO distributors (did, dname) VALUES (12, 'Micro Devices Inc')
     ON CONFLICT (did) DO SELECT WHERE dname = EXCLUDED.dname
