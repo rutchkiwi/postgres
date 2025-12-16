@@ -1042,10 +1042,12 @@ infer_arbiter_indexes(PlannerInfo *root)
 		else if (indexOidFromConstraint != InvalidOid)
 		{
 			/*
-			 * In the case of "ON constraint_name DO UPDATE" we need to skip
-			 * non-unique candidates.
+			 * In the case of "ON constraint_name DO UPDATE/SELECT" we need to
+			 * skip non-unique candidates.
 			 */
-			if (!idxForm->indisunique && onconflict->action == ONCONFLICT_UPDATE)
+			if (!idxForm->indisunique &&
+				(onconflict->action == ONCONFLICT_UPDATE ||
+				 onconflict->action == ONCONFLICT_SELECT))
 				continue;
 		}
 		else
