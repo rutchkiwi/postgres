@@ -3025,9 +3025,8 @@ ExecOnConflictSelect(ModifyTableContext *context,
 
 	if (lockStrength == LCS_NONE)
 	{
-		if (!table_tuple_fetch_row_version(relation, conflictTid, SnapshotAny, existing))
-			/* The pre-existing tuple was deleted */
-			return false;
+		/* Evem if the tuple is deleted, it must still be physically present */
+		Assert(table_tuple_fetch_row_version(relation, conflictTid, SnapshotAny, existing));
 	}
 	else
 	{
@@ -3048,7 +3047,7 @@ ExecOnConflictSelect(ModifyTableContext *context,
 				lockmode = LockTupleExclusive;
 				break;
 			default:
-				elog(ERROR, "unexpected lock strength %d", lockStrength);
+				elog(ERROR, "Unexpected lock strength %d", lockStrength);
 		}
 
 		if (!ExecOnConflictLockRow(context, existing, conflictTid,
