@@ -105,8 +105,7 @@ INSERT INTO <replaceable class="parameter">table_name</replaceable> [ AS <replac
    locked but not updated because an <literal>ON CONFLICT DO UPDATE
    ... WHERE</literal> clause <replaceable
    class="parameter">condition</replaceable> was not satisfied, the
-   row will not be returned.  <literal>ON CONFLICT DO SELECT</literal>
-   works similarly, except no update takes place.
+   row will not be returned.
   </para>
 
   <para>
@@ -130,7 +129,7 @@ INSERT INTO <replaceable class="parameter">table_name</replaceable> [ AS <replac
    also requires <literal>SELECT</literal> privilege on any column whose
    values are read in the <literal>ON CONFLICT DO UPDATE</literal>
    expressions or <replaceable>condition</replaceable>. If using a
-   <literal>WHERE</literal> with <literal>ON CONFLICT DO UPDATE / SELECT </literal>,
+   <literal>WHERE</literal> with <literal>ON CONFLICT DO UPDATE / SELECT</literal>,
    you must have <literal>SELECT</literal> privilege on the columns referenced
    in the <literal>WHERE</literal> clause.
   </para>

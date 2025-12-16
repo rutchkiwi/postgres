@@ -1147,8 +1147,8 @@ drop table trigger_ddl_table;
 drop function trigger_ddl_func();
 
 --
--- Verify behavior of before and after triggers with INSERT...ON CONFLICT
--- DO UPDATE
+-- Verify behavior of before and after triggers with 
+-- INSERT...ON CONFLICT DO UPDATE / SELECT
 --
 create table upsert (key int4 primary key, color text);
 

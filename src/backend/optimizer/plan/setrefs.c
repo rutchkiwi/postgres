@@ -3097,7 +3097,7 @@ search_indexed_tlist_for_sortgroupref(Expr *node,
  *	  other-relation Vars by OUTER_VAR references, while leaving target Vars
  *	  alone. Thus inner_itlist = NULL and acceptable_rel = the ID of the
  *	  target relation should be passed.
- * 3) ON CONFLICT UPDATE SET/WHERE clauses.  Here references to EXCLUDED are
+ * 3) ON CONFLICT UPDATE SET, SELECT & WHERE clauses.  Here references to EXCLUDED are
  *	  to be replaced with INNER_VAR references, while leaving target Vars (the
  *	  to-be-updated relation) alone. Correspondingly inner_itlist is to be
  *	  EXCLUDED elements, outer_itlist = NULL and acceptable_rel the target
