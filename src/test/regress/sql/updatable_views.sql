@@ -109,11 +109,25 @@ SELECT * FROM rw_view15;
 -- Test ON CONFLICT DO SELECT with updatable views
 -- This tests behavior consistency between DO SELECT and DO UPDATE when using WHERE clauses
 -- Note: rw_view15 is defined as "SELECT a, upper(b) FROM base_tbl" where base_tbl.b has DEFAULT 'Unspecified'
-INSERT INTO rw_view15 (a) VALUES (3) ON CONFLICT (a) DO SELECT RETURNING *; -- needs RETURNING, should return existing row
-INSERT INTO rw_view15 (a) VALUES (3) ON CONFLICT (a) DO SELECT WHERE excluded.upper = 'UNSPECIFIED' RETURNING *; -- WHERE on view column (uppercase)
-INSERT INTO rw_view15 (a) VALUES (3) ON CONFLICT (a) DO UPDATE SET a = excluded.a WHERE excluded.upper = 'UNSPECIFIED' RETURNING *; -- compare DO UPDATE with same WHERE
-INSERT INTO rw_view15 (a) VALUES (3) ON CONFLICT (a) DO SELECT WHERE excluded.upper = 'Unspecified' RETURNING *; -- WHERE on excluded value (mixed case)
-INSERT INTO rw_view15 (a) VALUES (3) ON CONFLICT (a) DO UPDATE SET a = excluded.a WHERE excluded.upper = 'Unspecified' RETURNING *; -- compare DO UPDATE with same WHERE
+INSERT INTO rw_view15 (a) VALUES (3) ON CONFLICT (a)
+DO SELECT RETURNING *; -- needs RETURNING, should return existing row
+
+-- WHERE on view column (uppercase)
+INSERT INTO rw_view15 (a) VALUES (3) ON CONFLICT (a)
+DO SELECT WHERE excluded.upper = 'UNSPECIFIED' RETURNING *; 
+
+-- compare DO UPDATE with same WHERE
+INSERT INTO rw_view15 (a) VALUES (3) ON CONFLICT (a)
+DO UPDATE SET a = excluded.a WHERE excluded.upper = 'UNSPECIFIED' RETURNING *; 
+
+-- WHERE on excluded value (mixed case)
+INSERT INTO rw_view15 (a) VALUES (3) ON CONFLICT (a)
+DO SELECT WHERE excluded.upper = 'Unspecified' RETURNING *; 
+
+-- compare DO UPDATE with same WHERE
+INSERT INTO rw_view15 (a) VALUES (3) ON CONFLICT (a)
+DO UPDATE SET a = excluded.a WHERE excluded.upper = 'Unspecified' RETURNING *; 
+
 SELECT * FROM rw_view15;
 ALTER VIEW rw_view15 ALTER COLUMN upper SET DEFAULT 'NOT SET';
 INSERT INTO rw_view15 (a) VALUES (4); -- should fail
