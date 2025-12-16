@@ -621,7 +621,8 @@ select * from parted_conflict_test order by a;
 -- test DO SELECT with multiple rows hitting different partitions
 truncate parted_conflict_test;
 insert into parted_conflict_test (a, b) values (1, 'a'), (2, 'b'), (4, 'c');
-insert into parted_conflict_test (a, b) values (1, 'x'), (2, 'y'), (4, 'z') on conflict (a) do select returning *;
+insert into parted_conflict_test (a, b) values (1, 'x'), (2, 'y'), (4, 'z')
+  on conflict (a) do select returning *, tableoid::regclass;
 
 -- should see original values (1, 'a'), (2, 'b'), (4, 'c')
 select * from parted_conflict_test order by a;
