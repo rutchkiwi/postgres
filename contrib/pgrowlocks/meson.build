@@ -31,6 +31,7 @@ tests += {
   'isolation': {
     'specs': [
       'pgrowlocks',
+      'on-conflict-do-select',
     ],
     'regress_args': ['--load-extension=pgrowlocks'],
   },

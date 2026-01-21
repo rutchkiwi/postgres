@@ -1,0 +1,80 @@
+Parsed test spec with 2 sessions
+
+starting permutation: s1_begin s1_doselect_nolock s2_rowlocks s1_rollback
+step s1_begin: BEGIN;
+step s1_doselect_nolock: INSERT INTO conflict_test VALUES (1, 'new') ON CONFLICT (key) DO SELECT RETURNING *;
+key|val     
+---+--------
+  1|original
+(1 row)
+
+step s2_rowlocks: SELECT locked_row, multi, modes FROM pgrowlocks('conflict_test');
+locked_row|multi|modes
+----------+-----+-----
+(0 rows)
+
+step s1_rollback: ROLLBACK;
+
+starting permutation: s1_begin s1_doselect_keyshare s2_rowlocks s1_rollback
+step s1_begin: BEGIN;
+step s1_doselect_keyshare: INSERT INTO conflict_test VALUES (1, 'new') ON CONFLICT (key) DO SELECT FOR KEY SHARE RETURNING *;
+key|val     
+---+--------
+  1|original
+(1 row)
+
+step s2_rowlocks: SELECT locked_row, multi, modes FROM pgrowlocks('conflict_test');
+locked_row|multi|modes            
+----------+-----+-----------------
+(0,1)     |f    |{"For Key Share"}
+(1 row)
+
+step s1_rollback: ROLLBACK;
+
+starting permutation: s1_begin s1_doselect_share s2_rowlocks s1_rollback
+step s1_begin: BEGIN;
+step s1_doselect_share: INSERT INTO conflict_test VALUES (1, 'new') ON CONFLICT (key) DO SELECT FOR SHARE RETURNING *;
+key|val     
+---+--------
+  1|original
+(1 row)
+
+step s2_rowlocks: SELECT locked_row, multi, modes FROM pgrowlocks('conflict_test');
+locked_row|multi|modes        
+----------+-----+-------------
+(0,1)     |f    |{"For Share"}
+(1 row)
+
+step s1_rollback: ROLLBACK;
+
+starting permutation: s1_begin s1_doselect_nokeyupd s2_rowlocks s1_rollback
+step s1_begin: BEGIN;
+step s1_doselect_nokeyupd: INSERT INTO conflict_test VALUES (1, 'new') ON CONFLICT (key) DO SELECT FOR NO KEY UPDATE RETURNING *;
+key|val     
+---+--------
+  1|original
+(1 row)
+
+step s2_rowlocks: SELECT locked_row, multi, modes FROM pgrowlocks('conflict_test');
+locked_row|multi|modes                
+----------+-----+---------------------
+(0,1)     |f    |{"For No Key Update"}
+(1 row)
+
+step s1_rollback: ROLLBACK;
+
+starting permutation: s1_begin s1_doselect_update s2_rowlocks s1_rollback
+step s1_begin: BEGIN;
+step s1_doselect_update: INSERT INTO conflict_test VALUES (1, 'new') ON CONFLICT (key) DO SELECT FOR UPDATE RETURNING *;
+key|val     
+---+--------
+  1|original
+(1 row)
+
+step s2_rowlocks: SELECT locked_row, multi, modes FROM pgrowlocks('conflict_test');
+locked_row|multi|modes         
+----------+-----+--------------
+(0,1)     |f    |{"For Update"}
+(1 row)
+
+step s1_rollback: ROLLBACK;
