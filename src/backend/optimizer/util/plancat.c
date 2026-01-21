@@ -838,7 +838,7 @@ infer_arbiter_indexes(PlannerInfo *root)
 
 	/*
 	 * Quickly return NIL for ON CONFLICT DO NOTHING without an inference
-	 * specification or named constraint.  ON CONFLICT DO UPDATE statements
+	 * specification or named constraint.  ON CONFLICT DO SELECT/UPDATE statements
 	 * must always provide one or the other (but parser ought to have caught
 	 * that already).
 	 */
@@ -1021,10 +1021,18 @@ infer_arbiter_indexes(PlannerInfo *root)
 		 */
 		if (indexOidFromConstraint == idxForm->indexrelid)
 		{
-			if (idxForm->indisexclusion && onconflict->action == ONCONFLICT_UPDATE)
+			/*
+			 * ON CONFLICT DO UPDATE/SELECT are not supported with exclusion
+			 * constraints (they require a unique index, to ensure that there
+			 * is only one conflicting row to update/select).
+			 */
+			if (idxForm->indisexclusion &&
+				(onconflict->action == ONCONFLICT_UPDATE ||
+				 onconflict->action == ONCONFLICT_SELECT))
 				ereport(ERROR,
-						(errcode(ERRCODE_WRONG_OBJECT_TYPE),
-						 errmsg("ON CONFLICT DO UPDATE not supported with exclusion constraints")));
+						errcode(ERRCODE_WRONG_OBJECT_TYPE),
+						errmsg("ON CONFLICT DO %s not supported with exclusion constraints",
+							   onconflict->action == ONCONFLICT_UPDATE ? "UPDATE" : "SELECT"));
 
 			/* Consider this one a match already */
 			results = lappend_oid(results, idxForm->indexrelid);
@@ -1034,10 +1042,12 @@ infer_arbiter_indexes(PlannerInfo *root)
 		else if (indexOidFromConstraint != InvalidOid)
 		{
 			/*
-			 * In the case of "ON constraint_name DO UPDATE" we need to skip
-			 * non-unique candidates.
+			 * In the case of "ON constraint_name DO UPDATE/SELECT" we need to
+			 * skip non-unique candidates.
 			 */
-			if (!idxForm->indisunique && onconflict->action == ONCONFLICT_UPDATE)
+			if (!idxForm->indisunique &&
+				(onconflict->action == ONCONFLICT_UPDATE ||
+				 onconflict->action == ONCONFLICT_SELECT))
 				continue;
 		}
 		else

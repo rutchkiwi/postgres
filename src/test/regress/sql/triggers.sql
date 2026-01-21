@@ -1147,8 +1147,8 @@ drop table trigger_ddl_table;
 drop function trigger_ddl_func();
 
 --
--- Verify behavior of before and after triggers with INSERT...ON CONFLICT
--- DO UPDATE
+-- Verify behavior of before and after triggers with 
+-- INSERT...ON CONFLICT DO UPDATE / SELECT
 --
 create table upsert (key int4 primary key, color text);
 
@@ -1197,6 +1197,9 @@ insert into upsert values(5, 'purple') on conflict (key) do update set color = '
 insert into upsert values(6, 'white') on conflict (key) do update set color = 'updated ' || upsert.color;
 insert into upsert values(7, 'pink') on conflict (key) do update set color = 'updated ' || upsert.color;
 insert into upsert values(8, 'yellow') on conflict (key) do update set color = 'updated ' || upsert.color;
+insert into upsert values(9, 'orange') on conflict (key) do select for update returning old.*, new.*, upsert.*;
+insert into upsert values(3, 'orange') on conflict (key) do select for update returning old.*, new.*, upsert.*;
+insert into upsert values(3, 'orange') on conflict (key) do select for update where upsert.key = 4 returning old.*, new.*, upsert.*;
 
 select * from upsert;
 

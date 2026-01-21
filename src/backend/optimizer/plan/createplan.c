@@ -7040,16 +7040,20 @@ make_modifytable(PlannerInfo *root, Plan *subplan,
 	if (!onconflict)
 	{
 		node->onConflictAction = ONCONFLICT_NONE;
+		node->arbiterIndexes = NIL;
+		node->onConflictLockStrength = LCS_NONE;
 		node->onConflictSet = NIL;
 		node->onConflictCols = NIL;
 		node->onConflictWhere = NULL;
-		node->arbiterIndexes = NIL;
 		node->exclRelRTI = 0;
 		node->exclRelTlist = NIL;
 	}
 	else
 	{
 		node->onConflictAction = onconflict->action;
+
+		/* Lock strength for ON CONFLICT DO SELECT [FOR UPDATE/SHARE] */
+		node->onConflictLockStrength = onconflict->lockStrength;
 
 		/*
 		 * Here we convert the ON CONFLICT UPDATE tlist, if any, to the
