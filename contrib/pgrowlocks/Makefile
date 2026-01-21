@@ -9,7 +9,7 @@ EXTENSION = pgrowlocks
 DATA = pgrowlocks--1.2.sql pgrowlocks--1.1--1.2.sql pgrowlocks--1.0--1.1.sql
 PGFILEDESC = "pgrowlocks - display row locking information"
 
-ISOLATION = pgrowlocks
+ISOLATION = pgrowlocks on-conflict-do-select
 ISOLATION_OPTS = --load-extension=pgrowlocks
 
 ifdef USE_PGXS

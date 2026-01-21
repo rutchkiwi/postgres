@@ -357,13 +357,25 @@
 
    <para>
     <command>INSERT</command> with an <literal>ON CONFLICT DO UPDATE</literal> clause
-    behaves similarly. In Read Committed mode, each row proposed for insertion
+    behaves similarly.  In Read Committed mode, each row proposed for insertion
     will either insert or update. Unless there are unrelated errors, one of
     those two outcomes is guaranteed.  If a conflict originates in another
     transaction whose effects are not yet visible to the <command>INSERT</command>,
     the <command>UPDATE</command> clause will affect that row,
     even though possibly <emphasis>no</emphasis> version of that row is
     conventionally visible to the command.
+   </para>
+
+   <para>
+    <command>INSERT</command> with an <literal>ON CONFLICT DO
+    SELECT</literal> clause behaves similarly to <literal>ON CONFLICT DO
+    UPDATE</literal>.  In Read Committed mode, each row proposed for insertion
+    is guaranteed to either insert or return the conflicting row (unless there are
+    unrelated errors).  If a conflict originates in another transaction whose
+    effects are not yet visible to the <command>INSERT</command>, the command
+    will wait for that transaction to commit or roll back, then return the
+    conflicting row if it was committed (even though that row was not visible
+    when the command started).
    </para>
 
    <para>
