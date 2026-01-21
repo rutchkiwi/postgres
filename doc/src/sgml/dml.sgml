@@ -387,7 +387,10 @@ UPDATE products SET price = price * 1.10
    <command>INSERT</command> with an
    <link linkend="sql-on-conflict"><literal>ON CONFLICT DO UPDATE</literal></link>
    clause, the old values will be non-<literal>NULL</literal> for conflicting
-   rows.  Similarly, if a <command>DELETE</command> is turned into an
+   rows.  Similarly, in an <command>INSERT</command> with an
+   <literal>ON CONFLICT DO SELECT</literal> clause, you can look at the old 
+   values to determine if your query inserted a row or not. 
+   If a <command>DELETE</command> is turned into an
    <command>UPDATE</command> by a <link linkend="sql-createrule">rewrite rule</link>,
    the new values may be non-<literal>NULL</literal>.
   </para>

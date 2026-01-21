@@ -200,7 +200,7 @@ typedef struct Query
 	/* OVERRIDING clause */
 	OverridingKind override pg_node_attr(query_jumble_ignore);
 
-	OnConflictExpr *onConflict; /* ON CONFLICT DO [NOTHING | UPDATE] */
+	OnConflictExpr *onConflict; /* ON CONFLICT DO NOTHING/UPDATE/SELECT */
 
 	/*
 	 * The following three fields describe the contents of the RETURNING list
@@ -1679,9 +1679,10 @@ typedef struct InferClause
 typedef struct OnConflictClause
 {
 	NodeTag		type;
-	OnConflictAction action;	/* DO NOTHING or UPDATE? */
+	OnConflictAction action;	/* DO NOTHING, SELECT, or UPDATE */
 	InferClause *infer;			/* Optional index inference clause */
-	List	   *targetList;		/* the target list (of ResTarget) */
+	LockClauseStrength lockStrength;	/* lock strength for DO SELECT */
+	List	   *targetList;		/* target list (of ResTarget) for DO UPDATE */
 	Node	   *whereClause;	/* qualifications */
 	ParseLoc	location;		/* token location, or -1 if unknown */
 } OnConflictClause;
